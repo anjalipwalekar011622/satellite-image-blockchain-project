@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const { generateHash } = require("./services/hashService");
 
 const app = express();
 
@@ -8,9 +9,11 @@ app.use(express.json());
 
 // Test route
 app.get("/", (req, res) => {
-    res.send("Backend server is running");
-});
 
+    const hash = generateHash("test-image");
+
+    res.send(`Backend running. Sample hash: ${hash}`);
+});
 const PORT = 5000;
 
 app.listen(PORT, () => {
