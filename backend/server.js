@@ -2,11 +2,14 @@ const express = require("express");
 const cors = require("cors");
 const { generateHash } = require("./services/hashService");
 const { generateGeohash } = require("./services/geohashService");
+const uploadRoute = require("./routes/uploadRoute");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+app.use("/api", uploadRoute);
 
 // Test route
 app.get("/", (req, res) => {
@@ -17,6 +20,7 @@ app.get("/", (req, res) => {
 
     res.send(`Backend running. Hash: ${hash} | Geohash: ${geohash}`);
 });
+
 const PORT = 5000;
 
 app.listen(PORT, () => {
