@@ -1,0 +1,10 @@
+const ngeohash = require("ngeohash");
+
+function generateGeohash(latitude, longitude) {
+
+    const geohash = ngeohash.encode(latitude, longitude);
+
+    return geohash;
+}
+
+module.exports = { generateGeohash };
