@@ -1,5 +1,6 @@
 const hashService = require("../services/hashService");
 const geohashService = require("../services/geohashService");
+const verifyController = require("./verifyController");
 
 exports.uploadImage = (req, res) => {
 
@@ -14,6 +15,8 @@ exports.uploadImage = (req, res) => {
         const imageBuffer = req.file.buffer;
 
         const hash = hashService.generateHash(imageBuffer);
+
+        verifyController.storeHash(hash);
 
         const latitude = 19.0760;
         const longitude = 72.8777;

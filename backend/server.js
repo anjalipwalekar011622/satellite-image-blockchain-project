@@ -3,6 +3,7 @@ const cors = require("cors");
 const { generateHash } = require("./services/hashService");
 const { generateGeohash } = require("./services/geohashService");
 const uploadRoute = require("./routes/uploadRoute");
+const verifyRoute = require("./routes/verifyRoute");
 
 const app = express();
 
@@ -10,6 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api", uploadRoute);
+app.use("/api", verifyRoute);
 
 // Test route
 app.get("/", (req, res) => {
