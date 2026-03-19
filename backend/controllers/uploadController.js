@@ -1,8 +1,9 @@
 const hashService = require("../services/hashService");
 const geohashService = require("../services/geohashService");
 const verifyController = require("./verifyController");
+const { storeImageOnBlockchain } = require("../services/blockchainService");
 
-exports.uploadImage = (req, res) => {
+exports.uploadImage = async (req, res) => {
 
     try {
 
@@ -23,7 +24,10 @@ exports.uploadImage = (req, res) => {
 
         const geohash = geohashService.generateGeohash(latitude, longitude);
 
-        const cid = "temporaryCID123";
+        const cid = "TEMP_CID";
+
+        // 🔥 ADD THIS PART (Blockchain call)
+        //await storeImageOnBlockchain(cid, hash, geohash);
 
         const metadata = {
             cid,
