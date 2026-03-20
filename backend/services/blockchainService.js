@@ -1,14 +1,17 @@
 const { ethers } = require("ethers");
 
 // 🔥 TOGGLE (IMPORTANT)
-const ENABLE_BLOCKCHAIN = false;
+const ENABLE_BLOCKCHAIN = true;
 
 // Load ABI
 const contractABI = require("../../blockchain/ABI/ImageStorage_ABI.json");
 
 // Contract details
-const CONTRACT_ADDRESS = "0x96Aa998179A20897736dA066F3eA1500f6257A2c";
-const RPC_URL = "http://127.0.0.1:7545";
+const CONTRACT_ADDRESS = "0xd9145CCE52D386f254917e481eB44e9943F39138";
+const RPC_URL = "http://127.0.0.1:8545";
+
+// 🔥 YOUR GANACHE PRIVATE KEY
+const PRIVATE_KEY = "0x7985933b43af4ef62e6a3a0eb925b8799ae1cf095d1f0b2ad79a337a9acdcb20";
 
 let contract = null;
 
@@ -16,14 +19,17 @@ let contract = null;
 if (ENABLE_BLOCKCHAIN) {
     try {
         const provider = new ethers.JsonRpcProvider(RPC_URL);
-        const signer = provider.getSigner();
 
-        contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer);
+        // 🔥 FIX: Create wallet using private key
+        const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+
+        // ✅ Contract with wallet (can SEND transactions)
+        contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, wallet);
 
         console.log("Blockchain connected ✅");
 
     } catch (error) {
-        console.log("Blockchain not connected ❌");
+        console.log("Blockchain not connected ❌", error.message);
     }
 } else {
     console.log("Blockchain disabled ⚠️");
