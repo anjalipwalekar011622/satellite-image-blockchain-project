@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SatVerify — Satellite Image Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #07090f;
+    --surface: #0d111c;
+    --surface2: #121826;
+    --border: #1e2840;
+    --accent: #00e5ff;
+    --accent2: #7b5cff;
+    --success: #00e676;
+    --danger: #ff3d71;
+    --text: #e8eaf6;
+    --muted: #5a6585;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Starfield background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(0,229,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 55% 15%, rgba(123,92,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 75% 45%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 88% 80%, rgba(0,229,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 20% 85%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 65% 70%, rgba(123,92,255,0.3) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glowing orb */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(0,229,255,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* HEADER */
+  header {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 48px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(7,9,15,0.8);
+    backdrop-filter: blur(12px);
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    position: relative;
+  }
+
+  .logo-icon svg { width: 36px; height: 36px; }
+
+  .logo-text {
+    font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .logo-sub {
+    font-family: var(--mono); font-size: 0.6rem;
+    color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase;
+    display: block; margin-top: -4px;
+  }
+
+  .status-badge {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 0.7rem; color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* TABS */
+  nav {
+    position: relative; z-index: 10;
+    display: flex; gap: 0;
+    padding: 0 48px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(7,9,15,0.6);
+    backdrop-filter: blur(8px);
+  }
+
+  .tab-btn {
+    font-family: var(--mono); font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.15em;
+    color: var(--muted);
+    padding: 18px 28px;
+    border: none; background: none; cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+  }
+
+  .tab-btn::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transform: scaleX(0);
+    transition: transform 0.25s ease;
+  }
+
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn.active::after { transform: scaleX(1); }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+
+  .tab-num {
+    display: inline-block;
+    width: 18px; height: 18px; line-height: 18px; text-align: center;
+    border-radius: 4px;
+    background: var(--border);
+    font-size: 0.6rem; margin-right: 8px;
+  }
+
+  .tab-btn.active .tab-num {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: var(--bg);
+  }
+
+  /* MAIN */
+  main {
+    position: relative; z-index: 10;
+    max-width: 1100px; margin: 0 auto;
+    padding: 48px 24px;
+  }
+
+  .panel { display: none; animation: fadeUp 0.35s ease; }
+  .panel.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SECTION TITLE */
+  .section-header {
+    margin-bottom: 36px;
+  }
+
+  .section-tag {
+    font-family: var(--mono); font-size: 0.65rem;
+    color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .section-title {
+    font-size: 2rem; font-weight: 800; letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .section-desc {
+    margin-top: 10px; color: var(--muted); font-size: 0.9rem; line-height: 1.6;
+    font-family: var(--mono);
+  }
+
+  /* GRID */
+  .grid-2 {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+  }
+
+  @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    position: relative; overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent2), transparent);
+    opacity: 0.5;
+  }
+
+  .card-title {
+    font-family: var(--mono); font-size: 0.7rem;
+    color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .card-title span { color: var(--accent); }
+
+  /* DROP ZONE */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.03);
+  }
+
+  .drop-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+
+  .drop-icon {
+    width: 48px; height: 48px; margin: 0 auto 16px;
+    opacity: 0.5;
+  }
+
+  .drop-text {
+    font-family: var(--mono); font-size: 0.75rem; color: var(--muted);
+  }
+
+  .drop-text strong { color: var(--accent); font-size: 0.85rem; display: block; margin-bottom: 4px; }
+
+  /* PREVIEW */
+  .img-preview-wrap {
+    border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    min-height: 200px;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 16px; position: relative;
+  }
+
+  .img-preview-wrap img {
+    width: 100%; height: auto; max-height: 300px; object-fit: contain;
+    display: block;
+  }
+
+  .img-placeholder {
+    font-family: var(--mono); font-size: 0.7rem; color: var(--muted);
+    text-align: center; padding: 40px;
+  }
+
+  /* BUTTON */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 0.75rem; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 14px 28px; border-radius: 10px;
+    border: none; cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 20px; width: 100%; justify-content: center;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: var(--bg);
+  }
+
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,229,255,0.2); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+  }
+
+  .btn-outline:hover { background: rgba(123,92,255,0.1); }
+
+  /* LOADING */
+  .loader {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: var(--bg);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* METADATA */
+  .meta-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-top: 4px;
+  }
+
+  .meta-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+
+  .meta-label {
+    font-family: var(--mono); font-size: 0.6rem;
+    color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .meta-value {
+    font-family: var(--mono); font-size: 0.8rem; color: var(--accent);
+    word-break: break-all; line-height: 1.4;
+  }
+
+  .meta-value.full { grid-column: 1 / -1; }
+
+  /* RESULT BANNER */
+  .result-banner {
+    border-radius: 12px; padding: 20px 24px;
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 20px;
+    border: 1px solid;
+  }
+
+  .result-banner.authentic {
+    background: rgba(0,230,118,0.07);
+    border-color: var(--success);
+  }
+
+  .result-banner.tampered {
+    background: rgba(255,61,113,0.07);
+    border-color: var(--danger);
+  }
+
+  .result-icon {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+
+  .authentic .result-icon { background: rgba(0,230,118,0.15); }
+  .tampered  .result-icon { background: rgba(255,61,113,0.15); }
+
+  .result-label {
+    font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em;
+  }
+
+  .authentic .result-label { color: var(--success); }
+  .tampered  .result-label { color: var(--danger); }
+
+  .result-sub {
+    font-family: var(--mono); font-size: 0.68rem; color: var(--muted); margin-top: 2px;
+  }
+
+  /* SEARCH FORM */
+  .input-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 8px; }
+
+  .field label {
+    font-family: var(--mono); font-size: 0.65rem;
+    color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase;
+  }
+
+  .field input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 16px;
+    font-family: var(--mono); font-size: 0.85rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .field input:focus { border-color: var(--accent2); }
+  .field input::placeholder { color: var(--muted); }
+
+  /* SEARCH RESULTS */
+  .result-list { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    display: grid; grid-template-columns: auto 1fr; gap: 20px;
+    align-items: start;
+    animation: fadeUp 0.3s ease;
+  }
+
+  .result-thumb {
+    width: 100px; height: 80px;
+    border-radius: 8px; overflow: hidden;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .result-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+  .result-thumb-placeholder {
+    font-size: 24px; opacity: 0.3;
+  }
+
+  .result-info { min-width: 0; }
+
+  .result-cid {
+    font-family: var(--mono); font-size: 0.75rem; color: var(--accent2);
+    margin-bottom: 10px; word-break: break-all;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 32px; right: 32px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 20px;
+    font-family: var(--mono); font-size: 0.75rem;
+    display: flex; align-items: center; gap: 12px;
+    z-index: 100;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .toast.hidden { display: none; }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center; padding: 48px;
+    font-family: var(--mono); font-size: 0.75rem; color: var(--muted);
+  }
+
+  .api-url {
+    font-family: var(--mono); font-size: 0.65rem;
+    color: var(--muted); margin-top: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .method-badge {
+    font-size: 0.6rem; padding: 2px 8px; border-radius: 4px; font-weight: 700;
+  }
+
+  .method-post { background: rgba(123,92,255,0.2); color: var(--accent2); }
+  .method-get  { background: rgba(0,229,255,0.15); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="18" cy="18" r="17" stroke="url(#g1)" stroke-width="1.5"/>
+        <circle cx="18" cy="18" r="9" stroke="url(#g2)" stroke-width="1.5"/>
+        <line x1="18" y1="1" x2="18" y2="10" stroke="#00e5ff" stroke-width="1.5"/>
+        <line x1="18" y1="26" x2="18" y2="35" stroke="#00e5ff" stroke-width="1.5"/>
+        <line x1="1" y1="18" x2="10" y2="18" stroke="#00e5ff" stroke-width="1.5"/>
+        <line x1="26" y1="18" x2="35" y2="18" stroke="#00e5ff" stroke-width="1.5"/>
+        <circle cx="18" cy="18" r="3" fill="url(#g1)"/>
+        <defs>
+          <linearGradient id="g1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#00e5ff"/><stop offset="1" stop-color="#7b5cff"/>
+          </linearGradient>
+          <linearGradient id="g2" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#7b5cff"/><stop offset="1" stop-color="#00e5ff"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">SatVerify</div>
+      <span class="logo-sub">Satellite Image Intelligence</span>
+    </div>
+  </div>
+  <div class="status-badge">
+    <div class="status-dot"></div>
+    API READY
+  </div>
+</header>
+
+<nav>
+  <button class="tab-btn active" onclick="switchTab('upload', this)">
+    <span class="tab-num">01</span>Upload
+  </button>
+  <button class="tab-btn" onclick="switchTab('verify', this)">
+    <span class="tab-num">02</span>Verify
+  </button>
+  <button class="tab-btn" onclick="switchTab('search', this)">
+    <span class="tab-num">03</span>Search
+  </button>
+</nav>
+
+<main>
+
+  <!-- ─── UPLOAD PANEL ─── -->
+  <div id="panel-upload" class="panel active">
+    <div class="section-header">
+      <div class="section-tag">// POST /uploadImage</div>
+      <div class="section-title">Upload Satellite Image</div>
+      <div class="section-desc">Select a satellite image to store. The backend returns CID, hash, and geolocation metadata.</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span>▸</span> Select Image</div>
+
+        <div class="drop-zone" id="upload-drop" ondragover="onDragOver(event,'upload-drop')" ondragleave="onDragLeave('upload-drop')" ondrop="onDrop(event,'upload-file','upload-preview')">
+          <input type="file" id="upload-file" accept="image/*" onchange="onFileChange('upload-file','upload-preview')"/>
+          <div class="drop-icon">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="6" y="10" width="36" height="28" rx="4" stroke="#5a6585" stroke-width="2"/>
+              <circle cx="17" cy="21" r="4" stroke="#5a6585" stroke-width="2"/>
+              <path d="M6 32l9-9 8 8 7-7 12 12" stroke="#5a6585" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="drop-text">
+            <strong>Click to browse or drag & drop</strong>
+            PNG, JPG, GeoTIFF — any satellite image
+          </div>
+        </div>
+
+        <div class="img-preview-wrap" id="upload-preview">
+          <div class="img-placeholder">Image preview will appear here</div>
+        </div>
+
+        <button class="btn btn-primary" id="upload-btn" onclick="doUpload()" disabled>
+          Upload Image
+        </button>
+        <div class="api-url">
+          <span class="method-badge method-post">POST</span>
+          /uploadImage · multipart/form-data
+        </div>
+      </div>
+
+      <div class="card" id="upload-result-card">
+        <div class="card-title"><span>▸</span> Response Metadata</div>
+        <div id="upload-meta-empty" class="empty">
+          Upload an image to see<br>returned metadata here.
+        </div>
+        <div id="upload-meta" class="meta-grid" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── VERIFY PANEL ─── -->
+  <div id="panel-verify" class="panel">
+    <div class="section-header">
+      <div class="section-tag">// POST /verifyImage</div>
+      <div class="section-title">Verify Authenticity</div>
+      <div class="section-desc">Upload an image to check whether it has been tampered with. The backend compares hashes.</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span>▸</span> Select Image to Verify</div>
+
+        <div class="drop-zone" id="verify-drop" ondragover="onDragOver(event,'verify-drop')" ondragleave="onDragLeave('verify-drop')" ondrop="onDrop(event,'verify-file','verify-preview')">
+          <input type="file" id="verify-file" accept="image/*" onchange="onFileChange('verify-file','verify-preview')"/>
+          <div class="drop-icon">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M24 6l4 12h12l-10 8 4 12-10-8-10 8 4-12L8 18h12z" stroke="#5a6585" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="drop-text">
+            <strong>Click to browse or drag & drop</strong>
+            Image to authenticate
+          </div>
+        </div>
+
+        <div class="img-preview-wrap" id="verify-preview">
+          <div class="img-placeholder">Image preview will appear here</div>
+        </div>
+
+        <button class="btn btn-primary" id="verify-btn" onclick="doVerify()" disabled>
+          Verify Image
+        </button>
+        <div class="api-url">
+          <span class="method-badge method-post">POST</span>
+          /verifyImage · multipart/form-data
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span>▸</span> Verification Result</div>
+        <div id="verify-empty" class="empty">
+          Verify an image to see<br>the authenticity result.
+        </div>
+        <div id="verify-result" style="display:none">
+          <div class="result-banner" id="verify-banner">
+            <div class="result-icon" id="verify-icon"></div>
+            <div>
+              <div class="result-label" id="verify-label"></div>
+              <div class="result-sub" id="verify-sub"></div>
+            </div>
+          </div>
+          <div class="meta-grid" id="verify-meta"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SEARCH PANEL ─── -->
+  <div id="panel-search" class="panel">
+    <div class="section-header">
+      <div class="section-tag">// GET /searchByLocation</div>
+      <div class="section-title">Search by Location</div>
+      <div class="section-desc">Enter coordinates to retrieve satellite images and metadata stored for that location.</div>
+    </div>
+
+    <div class="card" style="max-width:520px; margin-bottom: 32px;">
+      <div class="card-title"><span>▸</span> Enter Coordinates</div>
+      <div class="input-row">
+        <div class="field">
+          <label>Latitude</label>
+          <input type="number" id="lat" placeholder="e.g. 19.0760" step="any"/>
+        </div>
+        <div class="field">
+          <label>Longitude</label>
+          <input type="number" id="lon" placeholder="e.g. 72.8777" step="any"/>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="doSearch()">
+        Search Location
+      </button>
+      <div class="api-url">
+        <span class="method-badge method-get">GET</span>
+        /searchByLocation?lat=&amp;lon=
+      </div>
+    </div>
+
+    <div id="search-empty" class="empty" style="padding:24px 0">Enter coordinates above to search for images.</div>
+    <div id="search-results" class="result-list" style="display:none"></div>
+  </div>
+
+</main>
+
+<!-- TOAST -->
+<div class="toast hidden" id="toast">
+  <span id="toast-icon"></span>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────────
+  const API_BASE = 'http://localhost:3000'; // ← change to your backend URL
+
+  // ── TAB SWITCHING ───────────────────────────────────
+  function switchTab(name, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // ── DRAG & DROP ─────────────────────────────────────
+  function onDragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('dragover'); }
+  function onDragLeave(id)   { document.getElementById(id).classList.remove('dragover'); }
+  function onDrop(e, fileId, previewId) {
+    e.preventDefault();
+    onDragLeave(e.target.closest('.drop-zone')?.id || '');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const input = document.getElementById(fileId);
+    const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
+    renderPreview(file, previewId);
+    enableBtn(fileId);
+  }
+
+  function onFileChange(fileId, previewId) {
+    const file = document.getElementById(fileId).files[0];
+    if (!file) return;
+    renderPreview(file, previewId);
+    enableBtn(fileId);
+  }
+
+  function enableBtn(fileId) {
+    const btnMap = { 'upload-file': 'upload-btn', 'verify-file': 'verify-btn' };
+    const btn = document.getElementById(btnMap[fileId]);
+    if (btn) btn.disabled = false;
+  }
+
+  function renderPreview(file, previewId) {
+    const wrap = document.getElementById(previewId);
+    const url = URL.createObjectURL(file);
+    wrap.innerHTML = `<img src="${url}" alt="preview"/>`;
+  }
+
+  // ── LOADING STATE ────────────────────────────────────
+  function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    if (loading) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="loader"></span> Processing…`;
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = btnId === 'upload-btn' ? 'Upload Image' : 'Verify Image';
+    }
+  }
+
+  // ── TOAST ────────────────────────────────────────────
+  let toastTimer;
+  function showToast(msg, type = 'info') {
+    const icons = { info: 'ℹ️', error: '⚠️', success: '✅' };
+    document.getElementById('toast-icon').textContent = icons[type] || 'ℹ️';
+    document.getElementById('toast-msg').textContent = msg;
+    const t = document.getElementById('toast');
+    t.classList.remove('hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.add('hidden'), 3500);
+  }
+
+  // ── META RENDERER ────────────────────────────────────
+  function renderMeta(container, data) {
+    const fields = [
+      { key: 'cid',       label: 'CID',        full: true },
+      { key: 'hash',      label: 'Hash',        full: true },
+      { key: 'geohash',   label: 'Geohash' },
+      { key: 'latitude',  label: 'Latitude' },
+      { key: 'longitude', label: 'Longitude' },
+    ];
+    container.innerHTML = fields.map(f => {
+      const val = data[f.key] !== undefined ? data[f.key] : '—';
+      return `<div class="meta-item${f.full ? ' meta-value full' : ''}">
+        <div class="meta-label">${f.label}</div>
+        <div class="meta-value">${val}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── UPLOAD ───────────────────────────────────────────
+  async function doUpload() {
+    const file = document.getElementById('upload-file').files[0];
+    if (!file) return;
+    setLoading('upload-btn', true);
+
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+
+      const res = await fetch(`${API_BASE}/uploadImage`, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      document.getElementById('upload-meta-empty').style.display = 'none';
+      const meta = document.getElementById('upload-meta');
+      meta.style.display = 'grid';
+      renderMeta(meta, data);
+      showToast('Image uploaded successfully', 'success');
+    } catch (err) {
+      // ── DEMO MOCK (remove when backend is live) ──
+      const mock = {
+        cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
+        hash: '0x3a1b2c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2',
+        geohash: 'ttnn1',
+        latitude: '19.0760',
+        longitude: '72.8777',
+      };
+      document.getElementById('upload-meta-empty').style.display = 'none';
+      const meta = document.getElementById('upload-meta');
+      meta.style.display = 'grid';
+      renderMeta(meta, mock);
+      showToast('Demo mode — connect backend to use live API', 'info');
+    } finally {
+      setLoading('upload-btn', false);
+    }
+  }
+
+  // ── VERIFY ───────────────────────────────────────────
+  async function doVerify() {
+    const file = document.getElementById('verify-file').files[0];
+    if (!file) return;
+    setLoading('verify-btn', true);
+
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+
+      const res = await fetch(`${API_BASE}/verifyImage`, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      showVerifyResult(data);
+    } catch (err) {
+      // ── DEMO MOCK ──
+      const authentic = Math.random() > 0.45;
+      showVerifyResult({
+        result: authentic ? 'Image Authentic' : 'Image Tampered',
+        hash: '0x9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e'
+      });
+      showToast('Demo mode — connect backend to use live API', 'info');
+    } finally {
+      setLoading('verify-btn', false);
+    }
+  }
+
+  function showVerifyResult(data) {
+    const isAuth = data.result?.toLowerCase().includes('authentic');
+    document.getElementById('verify-empty').style.display = 'none';
+    document.getElementById('verify-result').style.display = 'block';
+
+    const banner = document.getElementById('verify-banner');
+    banner.className = 'result-banner ' + (isAuth ? 'authentic' : 'tampered');
+    document.getElementById('verify-icon').textContent = isAuth ? '✔' : '✖';
+    document.getElementById('verify-label').textContent = data.result || (isAuth ? 'Image Authentic' : 'Image Tampered');
+    document.getElementById('verify-sub').textContent = isAuth
+      ? 'Hash verified — no tampering detected'
+      : 'Hash mismatch — image may have been altered';
+
+    const meta = document.getElementById('verify-meta');
+    meta.innerHTML = `<div class="meta-item meta-value full">
+      <div class="meta-label">Hash</div>
+      <div class="meta-value">${data.hash || '—'}</div>
+    </div>`;
+
+    showToast(isAuth ? 'Image verified as authentic' : 'Tampering detected!', isAuth ? 'success' : 'error');
+  }
+
+  // ── SEARCH ───────────────────────────────────────────
+  async function doSearch() {
+    const lat = document.getElementById('lat').value.trim();
+    const lon = document.getElementById('lon').value.trim();
+    if (!lat || !lon) { showToast('Please enter both latitude and longitude', 'error'); return; }
+
+    const resultsEl = document.getElementById('search-results');
+    const emptyEl   = document.getElementById('search-empty');
+    resultsEl.innerHTML = `<div class="empty">Searching…</div>`;
+    resultsEl.style.display = 'flex';
+    emptyEl.style.display = 'none';
+
+    try {
+      const res = await fetch(`${API_BASE}/searchByLocation?lat=${lat}&lon=${lon}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      renderSearchResults(data.results || data);
+    } catch (err) {
+      // ── DEMO MOCK ──
+      const mock = [
+        { cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi', geohash: 'ttnn1', latitude: lat, longitude: lon },
+        { cid: 'bafkreihdwdcefgh4mkk3ew4x2zfj6fzxyzplhfxj4pujmdlzbtpzb7kgi', geohash: 'ttnn0', latitude: (+lat + 0.001).toFixed(4), longitude: (+lon + 0.002).toFixed(4) },
+      ];
+      renderSearchResults(mock);
+      showToast('Demo mode — connect backend to use live API', 'info');
+    }
+  }
+
+  function renderSearchResults(results) {
+    const el = document.getElementById('search-results');
+    if (!results || results.length === 0) {
+      el.innerHTML = `<div class="empty">No images found for this location.</div>`;
+      return;
+    }
+    el.innerHTML = results.map((r, i) => `
+      <div class="result-card">
+        <div class="result-thumb">
+          ${r.imageUrl
+            ? `<img src="${r.imageUrl}" alt="satellite"/>`
+            : `<div class="result-thumb-placeholder">🛰</div>`}
+        </div>
+        <div class="result-info">
+          <div class="result-cid">CID: ${r.cid}</div>
+          <div class="meta-grid">
+            <div class="meta-item"><div class="meta-label">Geohash</div><div class="meta-value">${r.geohash || '—'}</div></div>
+            <div class="meta-item"><div class="meta-label">Latitude</div><div class="meta-value">${r.latitude || '—'}</div></div>
+            <div class="meta-item"><div class="meta-label">Longitude</div><div class="meta-value">${r.longitude || '—'}</div></div>
+            ${r.hash ? `<div class="meta-item meta-value full"><div class="meta-label">Hash</div><div class="meta-value">${r.hash}</div></div>` : ''}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+</script>
+</body>
+</html>
