@@ -13,7 +13,7 @@
     --border: #1e2840;
     --accent: #00e5ff;
     --accent2: #7b5cff;
-    --success: #00e676;
+    --success: #07110c;
     --danger: #ff3d71;
     --text: #e8eaf6;
     --muted: #5a6585;
@@ -675,7 +675,7 @@
 
 <script>
   // ── CONFIG ──────────────────────────────────────────
-  const API_BASE = 'http://localhost:3000'; // ← change to your backend URL
+  const API_BASE = 'http://localhost:5000/api'; // ← change to your backend URL
 
   // ── TAB SWITCHING ───────────────────────────────────
   function switchTab(name, btn) {
@@ -700,11 +700,16 @@
   }
 
   function onFileChange(fileId, previewId) {
-    const file = document.getElementById(fileId).files[0];
-    if (!file) return;
-    renderPreview(file, previewId);
-    enableBtn(fileId);
-  }
+  const file = document.getElementById(fileId).files[0];
+  if (!file) return;
+
+  const wrap = document.getElementById(previewId);
+  const url = URL.createObjectURL(file);
+
+  wrap.innerHTML = `<img src="${url}" style="max-width:100%"/>`;
+
+  document.getElementById("upload-btn").disabled = false;
+}
 
   function enableBtn(fileId) {
     const btnMap = { 'upload-file': 'upload-btn', 'verify-file': 'verify-btn' };
@@ -750,6 +755,7 @@
       { key: 'geohash',   label: 'Geohash' },
       { key: 'latitude',  label: 'Latitude' },
       { key: 'longitude', label: 'Longitude' },
+      { key: 'txHash', label: 'Transaction Hash', full: true }
     ];
     container.innerHTML = fields.map(f => {
       const val = data[f.key] !== undefined ? data[f.key] : '—';
@@ -762,41 +768,41 @@
 
   // ── UPLOAD ───────────────────────────────────────────
   async function doUpload() {
-    const file = document.getElementById('upload-file').files[0];
-    if (!file) return;
-    setLoading('upload-btn', true);
+  const file = document.getElementById('upload-file').files[0];
+  if (!file) return;
 
-    try {
-      const fd = new FormData();
-      fd.append('image', file);
+  setLoading('upload-btn', true);
 
-      const res = await fetch(`${API_BASE}/uploadImage`, { method: 'POST', body: fd });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+  try {
+    const fd = new FormData();
+    fd.append('image', file);
 
-      document.getElementById('upload-meta-empty').style.display = 'none';
-      const meta = document.getElementById('upload-meta');
-      meta.style.display = 'grid';
-      renderMeta(meta, data);
-      showToast('Image uploaded successfully', 'success');
-    } catch (err) {
-      // ── DEMO MOCK (remove when backend is live) ──
-      const mock = {
-        cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
-        hash: '0x3a1b2c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2',
-        geohash: 'ttnn1',
-        latitude: '19.0760',
-        longitude: '72.8777',
-      };
-      document.getElementById('upload-meta-empty').style.display = 'none';
-      const meta = document.getElementById('upload-meta');
-      meta.style.display = 'grid';
-      renderMeta(meta, mock);
-      showToast('Demo mode — connect backend to use live API', 'info');
-    } finally {
-      setLoading('upload-btn', false);
-    }
+    const res = await fetch(`${API_BASE}/uploadImage`, {
+      method: 'POST',
+      body: fd
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+
+    document.getElementById('upload-meta-empty').style.display = 'none';
+
+    const meta = document.getElementById('upload-meta');
+    meta.style.display = 'grid';
+
+    renderMeta(meta, data);
+
+    showToast('Image uploaded successfully', 'success');
+
+  } catch (err) {
+    console.error("Upload error:", err);
+    showToast('Upload failed. Backend error.', 'error');
+
+  } finally {
+    setLoading('upload-btn', false);
   }
+}
 
   // ── VERIFY ───────────────────────────────────────────
   async function doVerify() {
