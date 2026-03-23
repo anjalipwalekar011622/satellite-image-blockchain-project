@@ -2,6 +2,7 @@ const hashService = require("../services/hashService");
 const geohashService = require("../services/geohashService");
 const verifyController = require("./verifyController");
 const { storeImageOnBlockchain } = require("../services/blockchainService");
+const { uploadToIPFS } = require("../../ipfs/ipfsService");
 
 exports.uploadImage = async (req, res) => {
 
@@ -34,8 +35,10 @@ exports.uploadImage = async (req, res) => {
         const geohash = geohashService.generateGeohash(latitude, longitude);
         console.log("📍 Geohash:", geohash);
 
-        // 🔹 Temporary CID
-        const cid = "TEMP_CID";
+        // 🔥 Upload to IPFS (BUFFER VERSION - IMPORTANT FIX)
+        console.log("☁️ Uploading to IPFS...");
+        const cid = await uploadToIPFS(imageBuffer, req.file.originalname);
+        console.log("📦 CID received:", cid);
 
         // 🔹 Prepare metadata
         const metadata = {
