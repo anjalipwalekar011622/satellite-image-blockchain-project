@@ -700,16 +700,16 @@
   }
 
   function onFileChange(fileId, previewId) {
-  const file = document.getElementById(fileId).files[0];
-  if (!file) return;
+      const file = document.getElementById(fileId).files[0];
+      if (!file) return;
 
-  const wrap = document.getElementById(previewId);
-  const url = URL.createObjectURL(file);
+      const wrap = document.getElementById(previewId);
+      const url = URL.createObjectURL(file);
 
-  wrap.innerHTML = `<img src="${url}" style="max-width:100%"/>`;
+      wrap.innerHTML = `<img src="${url}" style="max-width:100%"/>`;
 
-  document.getElementById("upload-btn").disabled = false;
-}
+      enableBtn(fileId); // 🔥 THIS FIXES VERIFY BUTTON
+    }
 
   function enableBtn(fileId) {
     const btnMap = { 'upload-file': 'upload-btn', 'verify-file': 'verify-btn' };
@@ -806,30 +806,41 @@
 
   // ── VERIFY ───────────────────────────────────────────
   async function doVerify() {
-    const file = document.getElementById('verify-file').files[0];
-    if (!file) return;
-    setLoading('verify-btn', true);
 
-    try {
-      const fd = new FormData();
-      fd.append('image', file);
+      const file = document.getElementById('verify-file').files[0];
+      if (!file) {
+        showToast('Please select an image', 'error');
+        return;
+      }
 
-      const res = await fetch(`${API_BASE}/verifyImage`, { method: 'POST', body: fd });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      showVerifyResult(data);
-    } catch (err) {
-      // ── DEMO MOCK ──
-      const authentic = Math.random() > 0.45;
-      showVerifyResult({
-        result: authentic ? 'Image Authentic' : 'Image Tampered',
-        hash: '0x9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e'
-      });
-      showToast('Demo mode — connect backend to use live API', 'info');
-    } finally {
-      setLoading('verify-btn', false);
+      setLoading('verify-btn', true);
+
+      try {
+        const fd = new FormData();
+        fd.append('image', file);
+
+        const res = await fetch(`${API_BASE}/verifyImage`, {
+          method: 'POST',
+          body: fd
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+
+        console.log("VERIFY RESPONSE:", data);
+
+        // 🔥 THIS SHOWS RESULT IN UI
+        showVerifyResult(data);
+
+      } catch (err) {
+        console.error("Verify error:", err);
+        showToast('Verification failed', 'error');
+
+      } finally {
+        setLoading('verify-btn', false);
+      }
     }
-  }
 
   function showVerifyResult(data) {
     const isAuth = data.result?.toLowerCase().includes('authentic');

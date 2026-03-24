@@ -34,31 +34,50 @@ contract ImageStorage {
         return (img.cid, img.hash, img.geohash, img.timestamp, img.uploader);
     }
 
-    // Verify image — compare stored hash with provided hash
+    // 🔥 OLD VERIFY (keep it)
     function verifyImage(uint index, string memory _hash) public view returns (bool) {
         return keccak256(bytes(images[index].hash)) == keccak256(bytes(_hash));
     }
 
+    // 🔥 NEW VERIFY (VERY IMPORTANT)
+    function verifyByHash(string memory _hash) public view returns (bool) {
+
+    for (uint i = 0; i < images.length; i++) {
+
+        if (
+            keccak256(bytes(images[i].hash)) ==
+            keccak256(bytes(_hash))
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
     // Search images by geohash
     function getImagesByGeohash(string memory _geohash) public view returns (uint[] memory) {
         uint count = 0;
+
         for (uint i = 0; i < images.length; i++) {
             if (keccak256(bytes(images[i].geohash)) == keccak256(bytes(_geohash))) {
                 count++;
             }
         }
+
         uint[] memory result = new uint[](count);
         uint j = 0;
+
         for (uint i = 0; i < images.length; i++) {
             if (keccak256(bytes(images[i].geohash)) == keccak256(bytes(_geohash))) {
                 result[j] = i;
                 j++;
             }
         }
+
         return result;
     }
 
-    // Get total images stored
     function getTotalImages() public view returns (uint) {
         return images.length;
     }

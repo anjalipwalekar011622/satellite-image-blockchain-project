@@ -24,9 +24,6 @@ exports.uploadImage = async (req, res) => {
         const hash = hashService.generateHash(imageBuffer);
         console.log("🔑 Hash generated:", hash);
 
-        // 🔹 Store hash locally (for verify API)
-        verifyController.storeHash(hash);
-
         // 🔹 Dummy location
         const latitude = 19.0760;
         const longitude = 72.8777;

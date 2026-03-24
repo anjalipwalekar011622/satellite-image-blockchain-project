@@ -1,56 +1,25 @@
 const hashService = require("../services/hashService");
+const { verifyImageOnBlockchain } = require("../services/blockchainService");
 
-// temporary storage
-let storedHash = null;
-
-exports.storeHash = (hash) => {
-    storedHash = hash;
-};
-
-exports.verifyImage = (req, res) => {
-
+exports.verifyImage = async (req, res) => {
     try {
-
         if (!req.file) {
-            return res.status(400).json({
-                error: "No image file uploaded"
-            });
+            return res.status(400).json({ error: "No file uploaded" });
         }
 
-        const imageBuffer = req.file.buffer;
+        const newHash = hashService.generateHash(req.file.buffer);
 
-        const newHash = hashService.generateHash(imageBuffer);
+        console.log("🔍 Incoming hash:", newHash);
 
-        if (!storedHash) {
-            return res.json({
-                message: "No stored hash available for verification"
-            });
-        }
+        const isAuthentic = await verifyImageOnBlockchain(newHash);
 
-        if (newHash === storedHash) {
-
-            res.json({
-                result: "Image Authentic",
-                hash: newHash
-            });
-
-        } else {
-
-            res.json({
-                result: "Image Tampered",
-                hash: newHash
-            });
-
-        }
-
-    } catch (error) {
-
-        console.log("VERIFY ERROR:", error);
-
-        res.status(500).json({
-            error: "Verification failed"
+        res.json({
+            result: isAuthentic ? "Image Authentic ✅" : "Image Tampered ❌",
+            hash: newHash
         });
 
+    } catch (error) {
+        console.error("Verify error:", error);
+        res.status(500).json({ error: "Verification failed" });
     }
-
 };
