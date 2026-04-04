@@ -7,7 +7,7 @@ const { address } = require("../../blockchain/contractAddress.json");
 
 const CONTRACT_ADDRESS = address;
 const RPC_URL = "http://127.0.0.1:7545";
-const PRIVATE_KEY = "0xfc09ad0b7236d69ce7899446d79e870f2ec4c46729df133b68b471107dd56479";
+const PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 
 let contract = null;
 

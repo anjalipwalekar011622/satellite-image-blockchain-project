@@ -611,6 +611,17 @@
             <div class="img-placeholder">Image preview will appear here</div>
           </div>
 
+          <div class="input-row" style="margin-top:16px;">
+            <div class="field">
+              <label>Latitude</label>
+              <input type="number" id="uploadLat" placeholder="e.g. 19.0760" step="any" />
+            </div>
+            <div class="field">
+              <label>Longitude</label>
+              <input type="number" id="uploadLng" placeholder="e.g. 72.8777" step="any" />
+            </div>
+          </div>
+
           <button class="btn btn-primary" id="upload-btn" onclick="doUpload()" disabled>
             Upload Image
           </button>
@@ -849,50 +860,58 @@
 
   // ── UPLOAD ────────────────────────────────────────────
   async function doUpload() {
-    const file = document.getElementById('upload-file').files[0];
-    if (!file) return;
+  const file = document.getElementById("upload-file").files[0];
+  const latitude = document.getElementById("uploadLat").value.trim();
+  const longitude = document.getElementById("uploadLng").value.trim();
 
-    // ✅ Check admin is logged in
-    if (!adminPassword) {
-      showToast('Please login as admin first', 'error');
-      return;
-    }
+  if (!file) return;
 
-    setLoading('upload-btn', true);
-
-    try {
-      const fd = new FormData();
-      fd.append('image', file);
-
-      const res = await fetch(`${API_BASE}/uploadImage`, {
-        method: 'POST',
-        headers: {
-          'x-admin-key': adminPassword   // ✅ sends admin key to backend
-        },
-        body: fd
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-
-      const data = await res.json();
-
-      document.getElementById('upload-meta-empty').style.display = 'none';
-      const meta = document.getElementById('upload-meta');
-      meta.style.display = 'grid';
-      renderMeta(meta, data);
-
-      showToast('Image uploaded successfully', 'success');
-
-    } catch (err) {
-      console.error("Upload error:", err);
-      showToast('Upload failed: ' + err.message, 'error');
-    } finally {
-      setLoading('upload-btn', false);
-    }
+  if (!adminPassword) {
+    showToast("Please login as admin first", "error");
+    return;
   }
+
+  if (!latitude || !longitude) {
+    showToast("Please enter latitude and longitude", "error");
+    return;
+  }
+
+  setLoading("upload-btn", true);
+
+  try {
+    const fd = new FormData();
+    fd.append("image", file);
+    fd.append("latitude", latitude);
+    fd.append("longitude", longitude);
+
+    const res = await fetch(`${API_BASE}/uploadImage`, {
+      method: "POST",
+      headers: {
+        "x-admin-key": adminPassword
+      },
+      body: fd
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+
+    document.getElementById("upload-meta-empty").style.display = "none";
+    const meta = document.getElementById("upload-meta");
+    meta.style.display = "grid";
+    renderMeta(meta, data);
+
+    showToast("Image uploaded successfully", "success");
+  } catch (err) {
+    console.error("Upload error:", err);
+    showToast("Upload failed: " + err.message, "error");
+  } finally {
+    setLoading("upload-btn", false);
+  }
+}
+
 
   // ── VERIFY ────────────────────────────────────────────
   async function doVerify() {
