@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>SatVerify — Satellite Image Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
     --bg: #07090f;
@@ -15,521 +17,198 @@
     --accent2: #7b5cff;
     --success: #00e676;
     --danger: #ff3d71;
+    --warning: #ffaa00;
     --text: #e8eaf6;
     --muted: #5a6585;
     --mono: 'Space Mono', monospace;
     --sans: 'Syne', sans-serif;
   }
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; overflow-x: hidden; }
   body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
+    content: ''; position: fixed; inset: 0;
     background-image:
       radial-gradient(1px 1px at 10% 20%, rgba(0,229,255,0.4) 0%, transparent 100%),
       radial-gradient(1px 1px at 30% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
       radial-gradient(1.5px 1.5px at 55% 15%, rgba(123,92,255,0.5) 0%, transparent 100%),
       radial-gradient(1px 1px at 75% 45%, rgba(255,255,255,0.2) 0%, transparent 100%),
-      radial-gradient(1px 1px at 88% 80%, rgba(0,229,255,0.3) 0%, transparent 100%),
-      radial-gradient(1px 1px at 20% 85%, rgba(255,255,255,0.2) 0%, transparent 100%),
-      radial-gradient(1px 1px at 65% 70%, rgba(123,92,255,0.3) 0%, transparent 100%);
-    pointer-events: none;
-    z-index: 0;
+      radial-gradient(1px 1px at 88% 80%, rgba(0,229,255,0.3) 0%, transparent 100%);
+    pointer-events: none; z-index: 0;
   }
-
-  body::after {
-    content: '';
-    position: fixed;
-    top: -200px; right: -200px;
-    width: 600px; height: 600px;
-    background: radial-gradient(circle, rgba(0,229,255,0.07) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
   header {
     position: relative; z-index: 10;
     display: flex; align-items: center; justify-content: space-between;
-    padding: 20px 48px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(7,9,15,0.8);
-    backdrop-filter: blur(12px);
+    padding: 20px 48px; border-bottom: 1px solid var(--border);
+    background: rgba(7,9,15,0.8); backdrop-filter: blur(12px);
   }
-
   .logo { display: flex; align-items: center; gap: 12px; }
-  .logo-icon { width: 36px; height: 36px; position: relative; }
-  .logo-icon svg { width: 36px; height: 36px; }
-
-  .logo-text {
-    font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  }
-
-  .logo-sub {
-    font-family: var(--mono); font-size: 0.6rem;
-    color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase;
-    display: block; margin-top: -4px;
-  }
-
-  .status-badge {
-    display: flex; align-items: center; gap: 8px;
-    font-family: var(--mono); font-size: 0.7rem; color: var(--muted);
-    letter-spacing: 0.1em;
-  }
-
-  .status-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--success);
-    box-shadow: 0 0 8px var(--success);
-    animation: pulse 2s ease-in-out infinite;
-  }
-
+  .logo-text { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .logo-sub { font-family: var(--mono); font-size: 0.6rem; color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase; display: block; margin-top: -4px; }
+  .status-badge { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 0.7rem; color: var(--muted); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 2s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-  nav {
-    position: relative; z-index: 10;
-    display: flex; gap: 0;
-    padding: 0 48px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(7,9,15,0.6);
-    backdrop-filter: blur(8px);
-  }
-
-  .tab-btn {
-    font-family: var(--mono); font-size: 0.72rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.15em;
-    color: var(--muted);
-    padding: 18px 28px;
-    border: none; background: none; cursor: pointer;
-    position: relative;
-    transition: color 0.2s;
-  }
-
-  .tab-btn::after {
-    content: '';
-    position: absolute; bottom: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    transform: scaleX(0);
-    transition: transform 0.25s ease;
-  }
-
+  nav { position: relative; z-index: 10; display: flex; padding: 0 48px; border-bottom: 1px solid var(--border); background: rgba(7,9,15,0.6); backdrop-filter: blur(8px); overflow-x: auto; }
+  .tab-btn { font-family: var(--mono); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); padding: 18px 22px; border: none; background: none; cursor: pointer; position: relative; transition: color 0.2s; white-space: nowrap; }
+  .tab-btn::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transform: scaleX(0); transition: transform 0.25s ease; }
   .tab-btn.active { color: var(--accent); }
   .tab-btn.active::after { transform: scaleX(1); }
   .tab-btn:hover:not(.active) { color: var(--text); }
-
-  .tab-num {
-    display: inline-block;
-    width: 18px; height: 18px; line-height: 18px; text-align: center;
-    border-radius: 4px;
-    background: var(--border);
-    font-size: 0.6rem; margin-right: 8px;
-  }
-
-  .tab-btn.active .tab-num {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: var(--bg);
-  }
-
-  main {
-    position: relative; z-index: 10;
-    max-width: 1100px; margin: 0 auto;
-    padding: 48px 24px;
-  }
-
+  .tab-num { display: inline-block; width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 4px; background: var(--border); font-size: 0.6rem; margin-right: 6px; }
+  .tab-btn.active .tab-num { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--bg); }
+  main { position: relative; z-index: 10; max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
   .panel { display: none; animation: fadeUp 0.35s ease; }
   .panel.active { display: block; }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
   .section-header { margin-bottom: 36px; }
-
-  .section-tag {
-    font-family: var(--mono); font-size: 0.65rem;
-    color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-
+  .section-tag { font-family: var(--mono); font-size: 0.65rem; color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 10px; }
   .section-title { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
-
-  .section-desc {
-    margin-top: 10px; color: var(--muted); font-size: 0.9rem; line-height: 1.6;
-    font-family: var(--mono);
-  }
-
+  .section-desc { margin-top: 10px; color: var(--muted); font-size: 0.9rem; line-height: 1.6; font-family: var(--mono); }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
-
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 28px;
-    position: relative; overflow: hidden;
-  }
-
-  .card::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--accent2), transparent);
-    opacity: 0.5;
-  }
-
-  .card-title {
-    font-family: var(--mono); font-size: 0.7rem;
-    color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase;
-    margin-bottom: 20px;
-    display: flex; align-items: center; gap: 8px;
-  }
-
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; position: relative; overflow: hidden; }
+  .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent2), transparent); opacity: 0.5; }
+  .card-title { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
   .card-title span { color: var(--accent); }
 
-  .drop-zone {
-    border: 2px dashed var(--border);
-    border-radius: 12px;
-    padding: 40px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-    position: relative;
-  }
+  /* STAT CARDS */
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .stat-card.blue::before { background: var(--accent); }
+  .stat-card.purple::before { background: var(--accent2); }
+  .stat-card.green::before { background: var(--success); }
+  .stat-card.red::before { background: var(--danger); }
+  .stat-num { font-size: 2.5rem; font-weight: 800; font-family: var(--mono); margin: 8px 0; }
+  .stat-num.blue { color: var(--accent); }
+  .stat-num.purple { color: var(--accent2); }
+  .stat-num.green { color: var(--success); }
+  .stat-num.red { color: var(--danger); }
+  .stat-label { font-family: var(--mono); font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
 
-  .drop-zone:hover, .drop-zone.dragover {
-    border-color: var(--accent);
-    background: rgba(0,229,255,0.03);
-  }
-
-  .drop-zone input[type="file"] {
-    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
-  }
-
+  /* DROP ZONE */
+  .drop-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px 24px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; position: relative; }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(0,229,255,0.03); }
+  .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
   .drop-icon { width: 48px; height: 48px; margin: 0 auto 16px; opacity: 0.5; }
-
   .drop-text { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
   .drop-text strong { color: var(--accent); font-size: 0.85rem; display: block; margin-bottom: 4px; }
-
-  .img-preview-wrap {
-    border-radius: 12px; overflow: hidden;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    min-height: 200px;
-    display: flex; align-items: center; justify-content: center;
-    margin-top: 16px; position: relative;
-  }
-
+  .img-preview-wrap { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--surface2); min-height: 200px; display: flex; align-items: center; justify-content: center; margin-top: 16px; }
   .img-preview-wrap img { width: 100%; height: auto; max-height: 300px; object-fit: contain; display: block; }
+  .img-placeholder { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); text-align: center; padding: 40px; }
 
-  .img-placeholder {
-    font-family: var(--mono); font-size: 0.7rem; color: var(--muted);
-    text-align: center; padding: 40px;
-  }
-
-  .btn {
-    display: inline-flex; align-items: center; gap: 10px;
-    font-family: var(--mono); font-size: 0.75rem; font-weight: 700;
-    letter-spacing: 0.12em; text-transform: uppercase;
-    padding: 14px 28px; border-radius: 10px;
-    border: none; cursor: pointer;
-    transition: all 0.2s;
-    margin-top: 20px; width: 100%; justify-content: center;
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: var(--bg);
-  }
-
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 14px 28px; border-radius: 10px; border: none; cursor: pointer; transition: all 0.2s; margin-top: 20px; width: 100%; justify-content: center; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--bg); }
   .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,229,255,0.2); }
   .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-  .loader {
-    display: inline-block; width: 16px; height: 16px;
-    border: 2px solid rgba(255,255,255,0.2);
-    border-top-color: var(--bg);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-
+  .btn-outline { background: transparent; border: 1px solid var(--accent2); color: var(--accent2); }
+  .btn-outline:hover { background: rgba(123,92,255,0.1); }
+  .loader { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2); border-top-color: var(--bg); border-radius: 50%; animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* META */
   .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
-
-  .meta-item {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
-  }
-
-  .meta-label {
-    font-family: var(--mono); font-size: 0.6rem;
-    color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-
-  .meta-value {
-    font-family: var(--mono); font-size: 0.8rem; color: var(--accent);
-    word-break: break-all; line-height: 1.4;
-  }
-
+  .meta-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .meta-label { font-family: var(--mono); font-size: 0.6rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 6px; }
+  .meta-value { font-family: var(--mono); font-size: 0.8rem; color: var(--accent); word-break: break-all; line-height: 1.4; }
   .meta-value.full { grid-column: 1 / -1; }
 
-  .result-banner {
-    border-radius: 12px; padding: 20px 24px;
-    display: flex; align-items: center; gap: 16px;
-    margin-bottom: 20px;
-    border: 1px solid;
-  }
-
+  /* RESULT BANNER */
+  .result-banner { border-radius: 12px; padding: 20px 24px; display: flex; align-items: center; gap: 16px; margin-bottom: 20px; border: 1px solid; }
   .result-banner.authentic { background: rgba(0,230,118,0.07); border-color: var(--success); }
   .result-banner.tampered  { background: rgba(255,61,113,0.07); border-color: var(--danger); }
-
-  .result-icon {
-    width: 44px; height: 44px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px; flex-shrink: 0;
-  }
-
+  .result-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
   .authentic .result-icon { background: rgba(0,230,118,0.15); }
   .tampered  .result-icon { background: rgba(255,61,113,0.15); }
-
-  .result-label { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; }
+  .result-label { font-size: 1.3rem; font-weight: 800; }
   .authentic .result-label { color: var(--success); }
   .tampered  .result-label { color: var(--danger); }
-
   .result-sub { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
 
+  /* INPUTS */
   .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-
   .field { display: flex; flex-direction: column; gap: 8px; }
-
-  .field label {
-    font-family: var(--mono); font-size: 0.65rem;
-    color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase;
-  }
-
-  .field input {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 13px 16px;
-    font-family: var(--mono); font-size: 0.85rem;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
+  .field label { font-family: var(--mono); font-size: 0.65rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; }
+  .field input { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 13px 16px; font-family: var(--mono); font-size: 0.85rem; color: var(--text); outline: none; transition: border-color 0.2s; }
   .field input:focus { border-color: var(--accent2); }
   .field input::placeholder { color: var(--muted); }
+  .loc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  .loc-field { display: flex; flex-direction: column; gap: 6px; }
+  .loc-label { font-family: var(--mono); font-size: 0.6rem; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; }
+  .loc-input { background: var(--surface2); border: 1px solid var(--accent2); border-radius: 10px; padding: 11px 14px; font-family: var(--mono); font-size: 0.82rem; color: var(--text); outline: none; transition: border-color 0.2s; width: 100%; }
+  .loc-input:focus { border-color: var(--accent); }
+  .loc-input::placeholder { color: var(--muted); }
 
-  .result-list { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
-
-  .result-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 20px;
-    display: grid; grid-template-columns: auto 1fr; gap: 20px;
-    align-items: start;
-    animation: fadeUp 0.3s ease;
-  }
-
-  .result-thumb {
-    width: 100px; height: 80px;
-    border-radius: 8px; overflow: hidden;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .result-thumb img { width: 100%; height: 100%; object-fit: cover; }
-  .result-thumb-placeholder { font-size: 24px; opacity: 0.3; }
-  .result-info { min-width: 0; }
-  .result-cid { font-family: var(--mono); font-size: 0.75rem; color: var(--accent2); margin-bottom: 10px; word-break: break-all; }
-
-  .toast {
-    position: fixed; bottom: 32px; right: 32px;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 16px 20px;
-    font-family: var(--mono); font-size: 0.75rem;
-    display: flex; align-items: center; gap: 12px;
-    z-index: 100;
-    animation: slideIn 0.3s ease;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
-  }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateX(24px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-
+  /* TOAST */
+  .toast { position: fixed; bottom: 32px; right: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; font-family: var(--mono); font-size: 0.75rem; display: flex; align-items: center; gap: 12px; z-index: 100; animation: slideIn 0.3s ease; box-shadow: 0 16px 48px rgba(0,0,0,0.5); }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
   .toast.hidden { display: none; }
-
-  .empty {
-    text-align: center; padding: 48px;
-    font-family: var(--mono); font-size: 0.75rem; color: var(--muted);
-  }
-
-  .api-url {
-    font-family: var(--mono); font-size: 0.65rem;
-    color: var(--muted); margin-top: 6px;
-    display: flex; align-items: center; gap: 6px;
-  }
-
+  .empty { text-align: center; padding: 48px; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+  .api-url { font-family: var(--mono); font-size: 0.65rem; color: var(--muted); margin-top: 6px; display: flex; align-items: center; gap: 6px; }
   .method-badge { font-size: 0.6rem; padding: 2px 8px; border-radius: 4px; font-weight: 700; }
   .method-post { background: rgba(123,92,255,0.2); color: var(--accent2); }
   .method-get  { background: rgba(0,229,255,0.15); color: var(--accent); }
 
-  /* ── ADMIN LOGIN CARD ── */
-  .admin-card {
-    background: var(--surface);
-    border: 1px solid var(--danger);
-    border-radius: 16px;
-    padding: 28px;
-    margin-bottom: 32px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .admin-card::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--danger), transparent);
-    opacity: 0.6;
-  }
-
-  .admin-title {
-    font-family: var(--mono); font-size: 0.8rem;
-    color: var(--danger); letter-spacing: 0.15em;
-    text-transform: uppercase; margin-bottom: 6px;
-  }
-
-  .admin-desc {
-    font-family: var(--mono); font-size: 0.7rem;
-    color: var(--muted); margin-bottom: 20px;
-  }
-
+  /* ADMIN */
+  .admin-card { background: var(--surface); border: 1px solid var(--danger); border-radius: 16px; padding: 28px; margin-bottom: 32px; position: relative; overflow: hidden; }
+  .admin-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--danger), transparent); opacity: 0.6; }
+  .admin-title { font-family: var(--mono); font-size: 0.8rem; color: var(--danger); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 6px; }
+  .admin-desc { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); margin-bottom: 20px; }
   .admin-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-
-  .admin-input {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 16px;
-    font-family: var(--mono); font-size: 0.85rem;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.2s;
-    width: 220px;
-  }
-
+  .admin-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; font-family: var(--mono); font-size: 0.85rem; color: var(--text); outline: none; width: 220px; }
   .admin-input:focus { border-color: var(--danger); }
   .admin-input::placeholder { color: var(--muted); }
-
-  .btn-admin {
-    font-family: var(--mono); font-size: 0.72rem; font-weight: 700;
-    letter-spacing: 0.1em; text-transform: uppercase;
-    padding: 12px 24px; border-radius: 10px;
-    border: 1px solid var(--danger);
-    background: rgba(255,61,113,0.1);
-    color: var(--danger); cursor: pointer;
-    transition: all 0.2s;
-  }
-
+  .btn-admin { font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 12px 24px; border-radius: 10px; border: 1px solid var(--danger); background: rgba(255,61,113,0.1); color: var(--danger); cursor: pointer; transition: all 0.2s; }
   .btn-admin:hover { background: rgba(255,61,113,0.2); }
+  .admin-err { font-family: var(--mono); font-size: 0.7rem; color: var(--danger); margin-top: 10px; }
 
-  .admin-err {
-    font-family: var(--mono); font-size: 0.7rem;
-    color: var(--danger); margin-top: 10px;
-  }
-
-  /* ── SEARCH RESULTS GRID ── */
-  .search-img-grid {
-    display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px;
-  }
-
-  .search-img-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px;
-    width: 200px;
-    transition: border-color 0.2s;
-  }
-
+  /* SEARCH RESULTS */
+  .search-img-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; }
+  .search-img-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; width: 200px; transition: border-color 0.2s; }
   .search-img-card:hover { border-color: var(--accent2); }
+  .search-img-card img { width: 100%; height: 140px; object-fit: cover; border-radius: 8px; background: var(--surface2); display: block; margin-bottom: 10px; }
+  .search-img-card .s-label { font-family: var(--mono); font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .search-img-card .s-val { font-family: var(--mono); font-size: 0.72rem; color: var(--accent); word-break: break-all; margin-bottom: 6px; }
+  .search-img-card a { font-family: var(--mono); font-size: 0.65rem; color: var(--accent2); text-decoration: none; }
+  .search-status { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); margin-top: 12px; padding: 12px 16px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); }
 
-  .search-img-card img {
-    width: 100%; height: 140px; object-fit: cover;
-    border-radius: 8px; background: var(--surface2);
-    display: block; margin-bottom: 10px;
-  }
+  /* HISTORY TABLE */
+  .history-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.72rem; }
+  .history-table th { background: var(--surface2); color: var(--muted); padding: 12px 16px; text-align: left; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.62rem; border-bottom: 1px solid var(--border); }
+  .history-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+  .history-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .type-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; }
+  .type-forest      { background: rgba(0,230,118,0.15); color: #00e676; }
+  .type-highway     { background: rgba(0,229,255,0.15); color: #00e5ff; }
+  .type-industrial  { background: rgba(255,170,0,0.15); color: #ffaa00; }
+  .type-residential { background: rgba(123,92,255,0.15); color: #7b5cff; }
+  .type-agricultural{ background: rgba(0,200,83,0.15); color: #00c853; }
+  .type-default     { background: rgba(90,101,133,0.15); color: #5a6585; }
 
-  .search-img-card .s-label {
-    font-family: var(--mono); font-size: 0.6rem;
-    color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
-  }
+  /* CHART BAR */
+  .chart-bar-wrap { margin-top: 8px; }
+  .chart-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .chart-label { font-family: var(--mono); font-size: 0.65rem; color: var(--muted); width: 100px; flex-shrink: 0; }
+  .chart-bar-bg { flex: 1; background: var(--surface2); border-radius: 4px; height: 8px; overflow: hidden; }
+  .chart-bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+  .chart-count { font-family: var(--mono); font-size: 0.65rem; color: var(--accent); width: 24px; text-align: right; }
 
-  .search-img-card .s-val {
-    font-family: var(--mono); font-size: 0.72rem;
-    color: var(--accent); word-break: break-all; margin-bottom: 6px;
-  }
+  /* MAP */
+  #searchMap { height: 320px; border-radius: 12px; border: 1px solid var(--border); margin-top: 20px; }
+  .leaflet-container { background: #0d111c; }
 
-  .search-img-card a {
-    font-family: var(--mono); font-size: 0.65rem;
-    color: var(--accent2); text-decoration: none;
-  }
-
-  .search-img-card a:hover { text-decoration: underline; }
-
-  .search-status {
-    font-family: var(--mono); font-size: 0.75rem;
-    color: var(--muted); margin-top: 12px;
-    padding: 12px 16px;
-    background: var(--surface2);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-  }
+  /* VERIFY REPORT */
+  .report-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-top: 16px; font-family: var(--mono); font-size: 0.72rem; line-height: 1.8; }
+  .report-box .r-row { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding: 8px 0; }
+  .report-box .r-row:last-child { border-bottom: none; }
+  .report-box .r-key { color: var(--muted); }
+  .report-box .r-val { color: var(--accent); word-break: break-all; max-width: 60%; text-align: right; }
 </style>
 </head>
 <body>
 
 <header>
   <div class="logo">
-    <div class="logo-icon">
-      <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="18" cy="18" r="17" stroke="url(#g1)" stroke-width="1.5"/>
-        <circle cx="18" cy="18" r="9" stroke="url(#g2)" stroke-width="1.5"/>
-        <line x1="18" y1="1" x2="18" y2="10" stroke="#00e5ff" stroke-width="1.5"/>
-        <line x1="18" y1="26" x2="18" y2="35" stroke="#00e5ff" stroke-width="1.5"/>
-        <line x1="1" y1="18" x2="10" y2="18" stroke="#00e5ff" stroke-width="1.5"/>
-        <line x1="26" y1="18" x2="35" y2="18" stroke="#00e5ff" stroke-width="1.5"/>
-        <circle cx="18" cy="18" r="3" fill="url(#g1)"/>
-        <defs>
-          <linearGradient id="g1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#00e5ff"/><stop offset="1" stop-color="#7b5cff"/>
-          </linearGradient>
-          <linearGradient id="g2" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#7b5cff"/><stop offset="1" stop-color="#00e5ff"/>
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
     <div>
       <div class="logo-text">SatVerify</div>
       <span class="logo-sub">Satellite Image Intelligence</span>
@@ -537,62 +216,55 @@
   </div>
   <div class="status-badge">
     <div class="status-dot"></div>
-    API READY
+    BLOCKCHAIN ACTIVE
   </div>
 </header>
 
-<nav>
-  <button class="tab-btn active" onclick="switchTab('upload', this)">
-    <span class="tab-num">01</span>Upload
-  </button>
-  <button class="tab-btn" onclick="switchTab('verify', this)">
-    <span class="tab-num">02</span>Verify
-  </button>
-  <button class="tab-btn" onclick="switchTab('search', this)">
-    <span class="tab-num">03</span>Search
-  </button>
+<nav id="mainNav" style="display:none;">
+  <button class="tab-btn admin-only active" onclick="switchTab('upload', this)"><span class="tab-num">01</span>Upload</button>
+  <button class="tab-btn user-admin" onclick="switchTab('verify', this)"><span class="tab-num">02</span>Verify</button>
+  <button class="tab-btn user-admin" onclick="switchTab('search', this)"><span class="tab-num">03</span>Search</button>
+  <button class="tab-btn user-admin" onclick="switchTab('analytics', this)"><span class="tab-num">04</span>Analytics</button>
+  <button class="tab-btn user-admin" onclick="switchTab('history', this)"><span class="tab-num">05</span>History</button>
+  <button class="tab-btn admin-only" onclick="switchTab('users', this)"><span class="tab-num">06</span>User DB</button>
+  <button class="tab-btn admin-only" onclick="switchTab('imageDb', this)"><span class="tab-num">07</span>Image DB</button>
+  <button class="tab-btn" onclick="logout()"><span class="tab-num">X</span>Logout</button>
 </nav>
+
 
 <main>
 
-  <!-- ════════════════════════════════════════
-       PANEL 01 — UPLOAD (admin only)
-  ════════════════════════════════════════ -->
-  <div id="panel-upload" class="panel active">
+  <div id="panel-auth" class="panel active">
+  <div class="section-header">
+    <div class="section-tag">// SECURE ACCESS</div>
+    <div class="section-title">SatVerify Login</div>
+    <div class="section-desc">Admins and users login with database-stored hashed passwords. First admin can be created once.</div>
+  </div>
 
-    <!-- ADMIN LOGIN BOX — shown when not logged in -->
-    <div id="adminLoginBox" class="admin-card">
+  <!-- ══════════════════════════════════
+       PANEL 01 — UPLOAD
+  ══════════════════════════════════ -->
+  <div id="panel-upload" class="panel">
+    <div id="adminLoginBox" class="admin-card" style="display:none;">
       <div class="admin-title">🔐 Admin Access Required</div>
-      <div class="admin-desc">Only admins can upload satellite images. Please enter your admin password to continue.</div>
+      <div class="admin-desc">Only verified admins can upload satellite images to the blockchain registry.</div>
       <div class="admin-row">
-        <input
-          type="password"
-          id="adminPasswordInput"
-          class="admin-input"
-          placeholder="Enter admin password"
-          onkeydown="if(event.key==='Enter') adminLogin()"
-        />
+        <input type="password" id="adminPasswordInput" class="admin-input" placeholder="Enter admin password" onkeydown="if(event.key==='Enter') adminLogin()"/>
         <button class="btn-admin" onclick="adminLogin()">Login</button>
       </div>
       <div class="admin-err" id="adminLoginMsg"></div>
     </div>
 
-    <!-- UPLOAD FORM — hidden until admin logs in -->
-    <div id="uploadSection" style="display:none;">
+    <div id="uploadSection">
       <div class="section-header">
-        <div class="section-tag">// POST /uploadImage</div>
+        <div class="section-tag">// POST /api/uploadImage</div>
         <div class="section-title">Upload Satellite Image</div>
-        <div class="section-desc">Select a satellite image to store. The backend returns CID, hash, and geolocation metadata.</div>
+        <div class="section-desc">Select an image, enter real GPS coordinates. System classifies, hashes, stores on IPFS and records on blockchain.</div>
       </div>
-
       <div class="grid-2">
         <div class="card">
-          <div class="card-title"><span>▸</span> Select Image</div>
-
-          <div class="drop-zone" id="upload-drop"
-            ondragover="onDragOver(event,'upload-drop')"
-            ondragleave="onDragLeave('upload-drop')"
-            ondrop="onDrop(event,'upload-file','upload-preview')">
+          <div class="card-title"><span>▸</span> Select Image & Enter Location</div>
+          <div class="drop-zone" id="upload-drop" ondragover="onDragOver(event,'upload-drop')" ondragleave="onDragLeave('upload-drop')" ondrop="onDrop(event,'upload-file','upload-preview')">
             <input type="file" id="upload-file" accept="image/*" onchange="onFileChange('upload-file','upload-preview')"/>
             <div class="drop-icon">
               <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -601,95 +273,71 @@
                 <path d="M6 32l9-9 8 8 7-7 12 12" stroke="#5a6585" stroke-width="2" stroke-linejoin="round"/>
               </svg>
             </div>
-            <div class="drop-text">
-              <strong>Click to browse or drag & drop</strong>
-              PNG, JPG, GeoTIFF — any satellite image
+            <div class="drop-text"><strong>Click to browse or drag & drop</strong>PNG, JPG, GeoTIFF — satellite images</div>
+          </div>
+          <div class="img-preview-wrap" id="upload-preview"><div class="img-placeholder">Image preview will appear here</div></div>
+          <div class="loc-row">
+            <div class="loc-field">
+              <label class="loc-label">📍 Latitude</label>
+              <input type="number" id="upload-lat" class="loc-input" placeholder="e.g. 19.0760" step="any"/>
+            </div>
+            <div class="loc-field">
+              <label class="loc-label">📍 Longitude</label>
+              <input type="number" id="upload-lng" class="loc-input" placeholder="e.g. 72.8777" step="any"/>
             </div>
           </div>
 
-          <div class="img-preview-wrap" id="upload-preview">
-            <div class="img-placeholder">Image preview will appear here</div>
-          </div>
-
-          <div class="input-row" style="margin-top:16px;">
-            <div class="field">
-              <label>Latitude</label>
-              <input type="number" id="uploadLat" placeholder="e.g. 19.0760" step="any" />
+          <div class="loc-row">
+            <div class="loc-field">
+              <label class="loc-label">🏷 Image Type</label>
+              <input type="text" id="upload-type" class="loc-input" placeholder="Forest, Highway, Farm, Industrial..." />
             </div>
-            <div class="field">
-              <label>Longitude</label>
-              <input type="number" id="uploadLng" placeholder="e.g. 72.8777" step="any" />
+            <div class="loc-field">
+              <label class="loc-label">📌 Place Name</label>
+              <input type="text" id="upload-place" class="loc-input" placeholder="Auto-filled from map" readonly />
             </div>
           </div>
 
-          <button class="btn btn-primary" id="upload-btn" onclick="doUpload()" disabled>
-            Upload Image
-          </button>
-          <div class="api-url">
-            <span class="method-badge method-post">POST</span>
-            /uploadImage · multipart/form-data
-          </div>
+          <button class="btn btn-primary" id="upload-btn" onclick="doUpload()" disabled>Upload to Blockchain</button>
+          <div class="api-url"><span class="method-badge method-post">POST</span>/uploadImage · multipart/form-data</div>
         </div>
-
-        <div class="card" id="upload-result-card">
+        <div class="card">
           <div class="card-title"><span>▸</span> Response Metadata</div>
-          <div id="upload-meta-empty" class="empty">
-            Upload an image to see<br>returned metadata here.
-          </div>
+          <div id="upload-meta-empty" class="empty">Upload an image to see<br>blockchain metadata here.</div>
           <div id="upload-meta" class="meta-grid" style="display:none"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ════════════════════════════════════════
+  <!-- ══════════════════════════════════
        PANEL 02 — VERIFY
-  ════════════════════════════════════════ -->
+  ══════════════════════════════════ -->
   <div id="panel-verify" class="panel">
     <div class="section-header">
-      <div class="section-tag">// POST /verifyImage</div>
-      <div class="section-title">Verify Authenticity</div>
-      <div class="section-desc">Upload an image to check whether it has been tampered with. The backend compares hashes.</div>
+      <div class="section-tag">// POST /api/verifyImage</div>
+      <div class="section-title">Verify Image Authenticity</div>
+      <div class="section-desc">Upload any image. System recomputes its SHA-256 hash and checks it against blockchain records to detect tampering.</div>
     </div>
-
     <div class="grid-2">
       <div class="card">
         <div class="card-title"><span>▸</span> Select Image to Verify</div>
-
-        <div class="drop-zone" id="verify-drop"
-          ondragover="onDragOver(event,'verify-drop')"
-          ondragleave="onDragLeave('verify-drop')"
-          ondrop="onDrop(event,'verify-file','verify-preview')">
+        <div class="drop-zone" id="verify-drop" ondragover="onDragOver(event,'verify-drop')" ondragleave="onDragLeave('verify-drop')" ondrop="onDrop(event,'verify-file','verify-preview')">
           <input type="file" id="verify-file" accept="image/*" onchange="onFileChange('verify-file','verify-preview')"/>
           <div class="drop-icon">
             <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M24 6l4 12h12l-10 8 4 12-10-8-10 8 4-12L8 18h12z" stroke="#5a6585" stroke-width="2" stroke-linejoin="round"/>
             </svg>
           </div>
-          <div class="drop-text">
-            <strong>Click to browse or drag & drop</strong>
-            Image to authenticate
-          </div>
+          <div class="drop-text"><strong>Click to browse or drag & drop</strong>Image to authenticate</div>
         </div>
-
-        <div class="img-preview-wrap" id="verify-preview">
-          <div class="img-placeholder">Image preview will appear here</div>
-        </div>
-
-        <button class="btn btn-primary" id="verify-btn" onclick="doVerify()" disabled>
-          Verify Image
-        </button>
-        <div class="api-url">
-          <span class="method-badge method-post">POST</span>
-          /verifyImage · multipart/form-data
-        </div>
+        <div class="img-preview-wrap" id="verify-preview"><div class="img-placeholder">Image preview will appear here</div></div>
+        <button class="btn btn-primary" id="verify-btn" onclick="doVerify()" disabled>Verify on Blockchain</button>
+        <div class="api-url"><span class="method-badge method-post">POST</span>/verifyImage · multipart/form-data</div>
       </div>
-
       <div class="card">
-        <div class="card-title"><span>▸</span> Verification Result</div>
-        <div id="verify-empty" class="empty">
-          Verify an image to see<br>the authenticity result.
-        </div>
+        <div class="card-title"><span>▸</span> Verification Report</div>
+        <div id="verify-empty" class="empty">Verify an image to see<br>the authenticity report.</div>
         <div id="verify-result" style="display:none">
           <div class="result-banner" id="verify-banner">
             <div class="result-icon" id="verify-icon"></div>
@@ -698,100 +346,337 @@
               <div class="result-sub" id="verify-sub"></div>
             </div>
           </div>
-          <div class="meta-grid" id="verify-meta"></div>
+          <!-- Detailed Report -->
+          <div class="report-box" id="verify-report"></div>
+          <button class="btn btn-outline" style="margin-top:12px" onclick="downloadReport()">⬇ Download Report</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ════════════════════════════════════════
-       PANEL 03 — SEARCH BY LOCATION
-  ════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════
+       PANEL 03 — SEARCH
+  ══════════════════════════════════ -->
   <div id="panel-search" class="panel">
     <div class="section-header">
-      <div class="section-tag">// GET /search?lat=...&lng=...</div>
+      <div class="section-tag">// GET /api/search?lat=...&lng=...</div>
       <div class="section-title">Search by Location</div>
-      <div class="section-desc">Enter coordinates to find satellite images stored at that geographic location.</div>
+      <div class="section-desc">Enter GPS coordinates to find all satellite images registered at that geographic location on the blockchain.</div>
     </div>
-
     <div class="card" style="margin-bottom: 24px;">
       <div class="card-title"><span>▸</span> Enter Coordinates</div>
-
       <div class="input-row">
-        <div class="field">
-          <label>Latitude</label>
-          <input type="number" id="latInput" placeholder="e.g. 18.5204" step="any"/>
-        </div>
-        <div class="field">
-          <label>Longitude</label>
-          <input type="number" id="lngInput" placeholder="e.g. 73.8567" step="any"/>
-        </div>
+        <div class="field"><label>Latitude</label><input type="number" id="latInput" placeholder="e.g. 19.0760" step="any"/></div>
+        <div class="field"><label>Longitude</label><input type="number" id="lngInput" placeholder="e.g. 72.8777" step="any"/></div>
       </div>
+      <button class="btn btn-primary" onclick="searchByLocation()">🔍 Search Blockchain</button>
+      <div class="api-url"><span class="method-badge method-get">GET</span>/search?lat={lat}&lng={lng}</div>
+    </div>
+    <div id="searchStatus" style="display:none;" class="search-status"></div>
+    <div id="searchResults" class="search-img-grid"></div>
+    <div id="searchMap" style="display:none;"></div>
+  </div>
 
-      <button class="btn btn-primary" onclick="searchByLocation()" id="search-btn">
-        🔍 Search Images
-      </button>
-      <div class="api-url">
-        <span class="method-badge method-get">GET</span>
-        /search?lat={lat}&lng={lng}
+  <!-- ══════════════════════════════════
+       PANEL 04 — ANALYTICS
+  ══════════════════════════════════ -->
+  <div id="panel-analytics" class="panel">
+    <div class="section-header">
+      <div class="section-tag">// SYSTEM ANALYTICS</div>
+      <div class="section-title">Dashboard Analytics</div>
+      <div class="section-desc">Real-time statistics from the blockchain registry. All data fetched directly from the smart contract.</div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="grid-4">
+      <div class="stat-card blue">
+        <div class="stat-label">Total Images</div>
+        <div class="stat-num blue" id="stat-total">—</div>
+        <div class="stat-label">On Blockchain</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Verified</div>
+        <div class="stat-num green" id="stat-verified">—</div>
+        <div class="stat-label">Authentic Records</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Tampered</div>
+        <div class="stat-num red" id="stat-tampered">—</div>
+        <div class="stat-label">Flagged Images</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">Locations</div>
+        <div class="stat-num purple" id="stat-locations">—</div>
+        <div class="stat-label">Unique Geohashes</div>
       </div>
     </div>
 
-    <!-- Status message -->
-    <div id="searchStatus" style="display:none;" class="search-status"></div>
+    <div class="grid-2">
+      <!-- Image Type Distribution -->
+      <div class="card">
+        <div class="card-title"><span>▸</span> Image Type Distribution</div>
+        <div class="chart-bar-wrap" id="type-chart">
+          <div class="empty">Load analytics to see distribution</div>
+        </div>
+      </div>
 
-    <!-- Results grid -->
-    <div id="searchResults" class="search-img-grid"></div>
+      <!-- System Info -->
+      <div class="card">
+        <div class="card-title"><span>▸</span> System Information</div>
+        <div class="report-box">
+          <div class="r-row"><span class="r-key">Blockchain</span><span class="r-val">Ethereum (Ganache Local)</span></div>
+          <div class="r-row"><span class="r-key">Storage</span><span class="r-val">IPFS via Pinata</span></div>
+          <div class="r-row"><span class="r-key">Hashing</span><span class="r-val">SHA-256</span></div>
+          <div class="r-row"><span class="r-key">Spatial Index</span><span class="r-val">Geohash (ngeohash)</span></div>
+          <div class="r-row"><span class="r-key">Smart Contract</span><span class="r-val">ImageStorage.sol</span></div>
+          <div class="r-row"><span class="r-key">Network</span><span class="r-val">http://127.0.0.1:7545</span></div>
+          <div class="r-row"><span class="r-key">Backend</span><span class="r-val">Node.js + Express (Port 5000)</span></div>
+        </div>
+        <button class="btn btn-primary" onclick="loadAnalytics()" style="margin-top: 16px;">🔄 Refresh Analytics</button>
+      </div>
+    </div>
   </div>
+
+  <!-- ══════════════════════════════════
+       PANEL 05 — HISTORY
+  ══════════════════════════════════ -->
+  <div id="panel-history" class="panel">
+    <div class="section-header">
+      <div class="section-tag">// BLOCKCHAIN TRANSACTION LOG</div>
+      <div class="section-title">Upload History</div>
+      <div class="section-desc">Complete record of all satellite images stored on the blockchain, fetched directly from the smart contract.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>▸</span> All Records</div>
+      <div id="history-loading" class="empty">Loading blockchain records...</div>
+      <div id="history-table-wrap" style="display:none; overflow-x:auto;">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Type</th>
+              <th>CID</th>
+              <th>Geohash</th>
+              <th>Timestamp</th>
+              <th>Uploader</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody"></tbody>
+        </table>
+      </div>
+      <button class="btn btn-primary" onclick="loadHistory()" style="margin-top: 20px;">🔄 Refresh Records</button>
+    </div>
+  </div>
+<div id="panel-users" class="panel">
+  <div class="section-header">
+    <div class="section-tag">// ADMIN DATABASE</div>
+    <div class="section-title">User Database</div>
+    <div class="section-desc">Admin-only view of registered users stored in SQLite.</div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span>▸</span> Registered Users</div>
+    <div id="usersDbContent" class="empty">Open this tab to load users.</div>
+  </div>
+</div>
+
+<div id="panel-imageDb" class="panel">
+  <div class="section-header">
+    <div class="section-tag">// ADMIN DATABASE</div>
+    <div class="section-title">Image Database</div>
+    <div class="section-desc">Admin-only full image metadata stored in SQLite.</div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span>▸</span> Image Records</div>
+    <div id="imageDbContent" class="empty">Open this tab to load image database.</div>
+  </div>
+</div>
 
 </main>
 
-<!-- TOAST -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span>▸</span> Login</div>
+      <div class="field">
+        <label>Username</label>
+        <input id="loginUsername" placeholder="Enter username" />
+      </div>
+      <div class="field" style="margin-top:16px;">
+        <label>Password</label>
+        <input id="loginPassword" type="password" placeholder="Enter password" />
+      </div>
+      <button class="btn btn-primary" onclick="loginUser()">Login</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>▸</span> Register / Admin Setup</div>
+      <div class="field">
+        <label>Username</label>
+        <input id="registerUsername" placeholder="Create username" />
+      </div>
+      <div class="field" style="margin-top:16px;">
+        <label>Password</label>
+        <input id="registerPassword" type="password" placeholder="Minimum 6 characters" />
+      </div>
+      <button class="btn btn-outline" onclick="registerUser()">Register User</button>
+      <button class="btn btn-primary" onclick="setupAdmin()">Create First Admin</button>
+      <div class="api-url">Admin setup works only once.</div>
+    </div>
+  </div>
+</div>
+
+
 <div class="toast hidden" id="toast">
   <span id="toast-icon"></span>
   <span id="toast-msg"></span>
 </div>
 
 <script>
-  // ── CONFIG ──────────────────────────────────────────
-  const API_BASE = 'http://localhost:5000/api'; // ← your backend URL
+  const API_BASE = 'https://reimagined-carnival-jjppwjj7prv525wx6-5000.app.github.dev/';
 
-  // ── ADMIN STATE ──────────────────────────────────────
-  let adminPassword = "";
+  let authToken = localStorage.getItem("satverify_token") || "";
+  let currentUser = JSON.parse(localStorage.getItem("satverify_user") || "null");
+  let lastVerifyData = null;
+  let searchMap = null;
 
-  // ── ADMIN LOGIN ──────────────────────────────────────
-  function adminLogin() {
-    const entered = document.getElementById("adminPasswordInput").value;
-    const msgEl   = document.getElementById("adminLoginMsg");
+  function authHeaders(extra = {}) {
+    return {
+      ...extra,
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+    };
+  }
 
-    if (entered === "admin123") {
-      adminPassword = entered;
-      document.getElementById("adminLoginBox").style.display  = "none";
-      document.getElementById("uploadSection").style.display  = "block";
-      showToast("✅ Admin access granted", "success");
-    } else {
-      msgEl.textContent = "❌ Wrong password. Try again.";
+  async function loginUser() {
+    const username = document.getElementById("loginUsername").value.trim();
+    const password = document.getElementById("loginPassword").value.trim();
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Login failed");
+
+      authToken = data.token;
+      currentUser = data.user;
+
+      localStorage.setItem("satverify_token", authToken);
+      localStorage.setItem("satverify_user", JSON.stringify(currentUser));
+
+      applyRoleDashboard();
+      showToast(`Logged in as ${currentUser.role}`, "success");
+    } catch (err) {
+      showToast(err.message, "error");
     }
   }
 
-  // ── TAB SWITCHING ────────────────────────────────────
+  async function registerUser() {
+    const username = document.getElementById("registerUsername").value.trim();
+    const password = document.getElementById("registerPassword").value.trim();
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Registration failed");
+
+      showToast("User registered successfully. Please login.", "success");
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  async function setupAdmin() {
+    const username = document.getElementById("registerUsername").value.trim();
+    const password = document.getElementById("registerPassword").value.trim();
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/setup-admin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Admin setup failed");
+
+      showToast("Admin created successfully. Please login.", "success");
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  function logout() {
+    authToken = "";
+    currentUser = null;
+    localStorage.removeItem("satverify_token");
+    localStorage.removeItem("satverify_user");
+
+    document.getElementById("mainNav").style.display = "none";
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    document.getElementById("panel-auth").classList.add("active");
+
+    showToast("Logged out", "info");
+  }
+
+  function applyRoleDashboard() {
+    if (!currentUser) return;
+
+    document.getElementById("mainNav").style.display = "flex";
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+
+    document.querySelectorAll(".admin-only").forEach(el => {
+      el.style.display = currentUser.role === "admin" ? "" : "none";
+    });
+
+    if (currentUser.role === "admin") {
+      document.getElementById("panel-upload").classList.add("active");
+      document.querySelector(".tab-btn.admin-only").classList.add("active");
+    } else {
+      document.getElementById("panel-verify").classList.add("active");
+      document.querySelector(".tab-btn.user-admin").classList.add("active");
+    }
+  }
+
   function switchTab(name, btn) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
     document.getElementById('panel-' + name).classList.add('active');
     btn.classList.add('active');
+
+    if (name === 'analytics') loadAnalytics();
+    if (name === 'history') loadHistory();
+    if (name === 'users') loadUsersDb();
+    if (name === 'imageDb') loadImageDb();
   }
 
-  // ── DRAG & DROP ──────────────────────────────────────
-  function onDragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('dragover'); }
-  function onDragLeave(id)   { document.getElementById(id).classList.remove('dragover'); }
+  function onDragOver(e, id) {
+    e.preventDefault();
+    document.getElementById(id).classList.add('dragover');
+  }
+
+  function onDragLeave(id) {
+    document.getElementById(id).classList.remove('dragover');
+  }
 
   function onDrop(e, fileId, previewId) {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (!file) return;
-    const input = document.getElementById(fileId);
-    const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
+
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById(fileId).files = dt.files;
+
     renderPreview(file, previewId);
     enableBtn(fileId);
   }
@@ -799,23 +684,21 @@
   function onFileChange(fileId, previewId) {
     const file = document.getElementById(fileId).files[0];
     if (!file) return;
+
     renderPreview(file, previewId);
     enableBtn(fileId);
   }
 
   function enableBtn(fileId) {
-    const btnMap = { 'upload-file': 'upload-btn', 'verify-file': 'verify-btn' };
-    const btn = document.getElementById(btnMap[fileId]);
-    if (btn) btn.disabled = false;
+    const m = { 'upload-file': 'upload-btn', 'verify-file': 'verify-btn' };
+    const b = document.getElementById(m[fileId]);
+    if (b) b.disabled = false;
   }
 
-  function renderPreview(file, previewId) {
-    const wrap = document.getElementById(previewId);
-    const url  = URL.createObjectURL(file);
-    wrap.innerHTML = `<img src="${url}" alt="preview"/>`;
+  function renderPreview(file, id) {
+    document.getElementById(id).innerHTML = `<img src="${URL.createObjectURL(file)}" alt="preview"/>`;
   }
 
-  // ── LOADING STATE ────────────────────────────────────
   function setLoading(btnId, loading) {
     const btn = document.getElementById(btnId);
     if (loading) {
@@ -823,32 +706,50 @@
       btn.innerHTML = `<span class="loader"></span> Processing…`;
     } else {
       btn.disabled = false;
-      btn.innerHTML = btnId === 'upload-btn' ? 'Upload Image' : 'Verify Image';
+      btn.innerHTML = btnId === 'upload-btn' ? 'Upload to Blockchain' : 'Verify on Blockchain';
     }
   }
 
-  // ── TOAST ─────────────────────────────────────────────
   let toastTimer;
   function showToast(msg, type = 'info') {
     const icons = { info: 'ℹ️', error: '⚠️', success: '✅' };
     document.getElementById('toast-icon').textContent = icons[type] || 'ℹ️';
-    document.getElementById('toast-msg').textContent  = msg;
+    document.getElementById('toast-msg').textContent = msg;
+
     const t = document.getElementById('toast');
     t.classList.remove('hidden');
+
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.add('hidden'), 3500);
+    toastTimer = setTimeout(() => t.classList.add('hidden'), 4000);
   }
 
-  // ── META RENDERER ─────────────────────────────────────
+  async function getPlaceName(lat, lng) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+      const res = await fetch(url, {
+        headers: { "Accept-Language": "en" }
+      });
+
+      const data = await res.json();
+      return data.display_name || `${lat}, ${lng}`;
+    } catch {
+      return `${lat}, ${lng}`;
+    }
+  }
+
   function renderMeta(container, data) {
     const fields = [
-      { key: 'cid',       label: 'CID',               full: true },
-      { key: 'hash',      label: 'Hash',               full: true },
-      { key: 'geohash',   label: 'Geohash' },
-      { key: 'latitude',  label: 'Latitude' },
+      { key: 'imageType', label: 'Image Type' },
+      { key: 'placeName', label: 'Place Name', full: true },
+      { key: 'geohash', label: 'Geohash' },
+      { key: 'latitude', label: 'Latitude' },
       { key: 'longitude', label: 'Longitude' },
-      { key: 'txHash',    label: 'Transaction Hash',   full: true }
+      { key: 'cid', label: 'IPFS CID', full: true },
+      { key: 'hash', label: 'SHA-256 Hash', full: true },
+      { key: 'txHash', label: 'TX Hash', full: true },
+      { key: 'uploadedAt', label: 'Uploaded At', full: true }
     ];
+
     container.innerHTML = fields.map(f => {
       const val = data[f.key] !== undefined ? data[f.key] : '—';
       return `<div class="meta-item${f.full ? ' meta-value full' : ''}">
@@ -858,65 +759,73 @@
     }).join('');
   }
 
-  // ── UPLOAD ────────────────────────────────────────────
   async function doUpload() {
-  const file = document.getElementById("upload-file").files[0];
-  const latitude = document.getElementById("uploadLat").value.trim();
-  const longitude = document.getElementById("uploadLng").value.trim();
+    const file = document.getElementById('upload-file').files[0];
 
-  if (!file) return;
+    if (!file) return;
 
-  if (!adminPassword) {
-    showToast("Please login as admin first", "error");
-    return;
-  }
-
-  if (!latitude || !longitude) {
-    showToast("Please enter latitude and longitude", "error");
-    return;
-  }
-
-  setLoading("upload-btn", true);
-
-  try {
-    const fd = new FormData();
-    fd.append("image", file);
-    fd.append("latitude", latitude);
-    fd.append("longitude", longitude);
-
-    const res = await fetch(`${API_BASE}/uploadImage`, {
-      method: "POST",
-      headers: {
-        "x-admin-key": adminPassword
-      },
-      body: fd
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.error || `HTTP ${res.status}`);
+    if (!currentUser || currentUser.role !== "admin") {
+      showToast("Admin login required", "error");
+      return;
     }
 
-    document.getElementById("upload-meta-empty").style.display = "none";
-    const meta = document.getElementById("upload-meta");
-    meta.style.display = "grid";
-    renderMeta(meta, data);
+    const lat = document.getElementById('upload-lat').value.trim();
+    const lng = document.getElementById('upload-lng').value.trim();
+    const imageType = document.getElementById('upload-type').value.trim();
 
-    showToast("Image uploaded successfully", "success");
-  } catch (err) {
-    console.error("Upload error:", err);
-    showToast("Upload failed: " + err.message, "error");
-  } finally {
-    setLoading("upload-btn", false);
+    if (!lat || !lng) {
+      showToast('Please enter Latitude and Longitude!', 'error');
+      return;
+    }
+
+    if (!imageType) {
+      showToast('Please enter image type', 'error');
+      return;
+    }
+
+    setLoading('upload-btn', true);
+
+    try {
+      const placeName = await getPlaceName(lat, lng);
+      document.getElementById("upload-place").value = placeName;
+
+      const fd = new FormData();
+      fd.append('image', file);
+      fd.append('latitude', lat);
+      fd.append('longitude', lng);
+      fd.append('image_type', imageType);
+      fd.append('place_name', placeName);
+
+      const res = await fetch(`${API_BASE}/uploadImage`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: fd
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+      document.getElementById('upload-meta-empty').style.display = 'none';
+      const meta = document.getElementById('upload-meta');
+      meta.style.display = 'grid';
+
+      renderMeta(meta, data);
+      showToast('Image uploaded and saved in database!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Upload failed: ' + err.message, 'error');
+    } finally {
+      setLoading('upload-btn', false);
+    }
   }
-}
 
-
-  // ── VERIFY ────────────────────────────────────────────
   async function doVerify() {
     const file = document.getElementById('verify-file').files[0];
-    if (!file) { showToast('Please select an image', 'error'); return; }
+
+    if (!file) {
+      showToast('Please select an image', 'error');
+      return;
+    }
 
     setLoading('verify-btn', true);
 
@@ -926,16 +835,17 @@
 
       const res = await fetch(`${API_BASE}/verifyImage`, {
         method: 'POST',
+        headers: authHeaders(),
         body: fd
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
       const data = await res.json();
-      showVerifyResult(data);
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
+      lastVerifyData = { ...data, filename: file.name, verifiedAt: new Date().toLocaleString() };
+      showVerifyResult(lastVerifyData);
     } catch (err) {
-      console.error("Verify error:", err);
+      console.error(err);
       showToast('Verification failed', 'error');
     } finally {
       setLoading('verify-btn', false);
@@ -944,98 +854,326 @@
 
   function showVerifyResult(data) {
     const isAuth = data.result?.toLowerCase().includes('authentic');
-    document.getElementById('verify-empty').style.display  = 'none';
+
+    document.getElementById('verify-empty').style.display = 'none';
     document.getElementById('verify-result').style.display = 'block';
 
     const banner = document.getElementById('verify-banner');
     banner.className = 'result-banner ' + (isAuth ? 'authentic' : 'tampered');
-    document.getElementById('verify-icon').textContent  = isAuth ? '✔' : '✖';
-    document.getElementById('verify-label').textContent = data.result || (isAuth ? 'Image Authentic' : 'Image Tampered');
-    document.getElementById('verify-sub').textContent   = isAuth
-      ? 'Hash verified — no tampering detected'
-      : 'Hash mismatch — image may have been altered';
 
-    const meta = document.getElementById('verify-meta');
-    meta.innerHTML = `<div class="meta-item meta-value full">
-      <div class="meta-label">Hash</div>
-      <div class="meta-value">${data.hash || '—'}</div>
-    </div>`;
+    document.getElementById('verify-icon').textContent = isAuth ? '✔' : '✖';
+    document.getElementById('verify-label').textContent = isAuth ? 'Image Authentic' : 'Image Tampered';
+    document.getElementById('verify-sub').textContent = isAuth
+      ? 'SHA-256 hash matched database/blockchain record'
+      : 'SHA-256 hash does not match any stored record';
+
+    const image = data.image || {};
+
+    document.getElementById('verify-report').innerHTML = `
+      <div class="r-row"><span class="r-key">File Name</span><span class="r-val">${data.filename || '—'}</span></div>
+      <div class="r-row"><span class="r-key">Status</span><span class="r-val" style="color:${isAuth ? 'var(--success)' : 'var(--danger)'}">${isAuth ? 'AUTHENTIC' : 'TAMPERED'}</span></div>
+      <div class="r-row"><span class="r-key">Image Type</span><span class="r-val">${image.imageType || '—'}</span></div>
+      <div class="r-row"><span class="r-key">Place</span><span class="r-val">${image.placeName || '—'}</span></div>
+      <div class="r-row"><span class="r-key">SHA-256 Hash</span><span class="r-val">${(data.hash || '—').substring(0, 32)}...</span></div>
+      <div class="r-row"><span class="r-key">Verified At</span><span class="r-val">${data.verifiedAt || new Date().toLocaleString()}</span></div>
+    `;
 
     showToast(isAuth ? 'Image verified as authentic' : 'Tampering detected!', isAuth ? 'success' : 'error');
   }
 
-  // ── SEARCH BY LOCATION ────────────────────────────────
-async function searchByLocation() {
-  const lat = document.getElementById("latInput").value.trim();
-  const lng = document.getElementById("lngInput").value.trim();
+  function downloadReport() {
+    if (!lastVerifyData) return;
 
-  const statusEl = document.getElementById("searchStatus");
-  const resultsEl = document.getElementById("searchResults");
+    const isAuth = lastVerifyData.result?.toLowerCase().includes('authentic');
+    const image = lastVerifyData.image || {};
 
-  // Clear previous results
-  resultsEl.innerHTML = "";
-  statusEl.style.display = "block";
-  statusEl.style.color = "var(--muted)";
-  statusEl.textContent = "⏳ Searching blockchain...";
+    const content = `
+SATVERIFY — VERIFICATION REPORT
+================================
+Result      : ${isAuth ? 'AUTHENTIC' : 'TAMPERED / NOT FOUND'}
+File Name   : ${lastVerifyData.filename || '—'}
+Image Type  : ${image.imageType || '—'}
+Place Name  : ${image.placeName || '—'}
+SHA-256 Hash: ${lastVerifyData.hash || '—'}
+Verified At : ${lastVerifyData.verifiedAt || new Date().toLocaleString()}
+================================
+Generated by SatVerify System
+    `.trim();
 
-  if (!lat || !lng) {
-    statusEl.textContent = "❌ Please enter both latitude and longitude!";
-    statusEl.style.color = "var(--danger)";
-    return;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+
+    a.href = url;
+    a.download = `verification_report_${Date.now()}.txt`;
+    a.click();
+
+    URL.revokeObjectURL(url);
+    showToast('Report downloaded!', 'success');
   }
 
-  try {
-    const res = await fetch(`${API_BASE}/search?lat=${lat}&lng=${lng}`);
+  async function searchByLocation() {
+    const lat = document.getElementById("latInput").value.trim();
+    const lng = document.getElementById("lngInput").value.trim();
+    const statusEl = document.getElementById("searchStatus");
+    const resultsEl = document.getElementById("searchResults");
+    const mapEl = document.getElementById("searchMap");
 
-    if (!res.ok) {
-      throw new Error("Backend not responding");
-    }
+    resultsEl.innerHTML = "";
+    mapEl.style.display = "none";
+    statusEl.style.display = "block";
+    statusEl.style.color = "var(--muted)";
+    statusEl.textContent = "⏳ Searching database and blockchain...";
 
-    const data = await res.json();
-    console.log("Search response:", data);
-
-    if (!data.images || data.images.length === 0) {
-      statusEl.textContent = `⚠️ No images found at this location (Geohash: ${data.geohash || "unknown"})`;
-      statusEl.style.color = "var(--muted)";
+    if (!lat || !lng) {
+      statusEl.textContent = "❌ Please enter both latitude and longitude!";
+      statusEl.style.color = "var(--danger)";
       return;
     }
 
-    statusEl.textContent = `✅ Found ${data.images.length} image(s)`;
-    statusEl.style.color = "var(--success)";
+    try {
+      const placeName = await getPlaceName(lat, lng);
 
-    data.images.forEach((img) => {
-      const card = document.createElement("div");
-      card.className = "search-img-card";
+      const res = await fetch(`${API_BASE}/search?lat=${lat}&lng=${lng}`, {
+        headers: authHeaders()
+      });
 
-      const imageUrl = img.ipfsUrl || `https://ipfs.io/ipfs/${img.cid}`;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Search failed");
 
-      card.innerHTML = `
-        <img
-          src="${imageUrl}"
-          alt="Satellite Image"
-          onerror="this.src=''; this.style.opacity='0.3';"
-        />
-        <div class="s-label">ID</div>
-        <div class="s-val">${img.id}</div>
+      if (!data.images || data.images.length === 0) {
+        statusEl.textContent = `⚠️ No images found. Place: ${placeName}. Geohash: ${data.geohash || '—'}`;
+        statusEl.style.color = "var(--muted)";
+        return;
+      }
 
-        <div class="s-label">CID</div>
-        <div class="s-val">${img.cid.substring(0, 20)}...</div>
+      statusEl.textContent = `✅ Found ${data.images.length} image(s). Place: ${placeName}. Geohash: ${data.geohash}`;
+      statusEl.style.color = "var(--success)";
 
-        <div class="s-label">Geohash</div>
-        <div class="s-val">${img.geohash}</div>
+      data.images.forEach(img => {
+        const card = document.createElement("div");
+        card.className = "search-img-card";
+        const imageUrl = img.ipfsUrl || `https://ipfs.io/ipfs/${img.cid}`;
 
-        <a href="${imageUrl}" target="_blank">Open in IPFS ↗</a>
-      `;
+        card.innerHTML = `
+          <img src="${imageUrl}" alt="Satellite" onerror="this.style.display='none'"/>
+          <div class="s-label">Type</div><div class="s-val">${img.imageType || '—'}</div>
+          <div class="s-label">Place</div><div class="s-val">${img.placeName || placeName}</div>
+          <div class="s-label">CID</div><div class="s-val">${img.cid.substring(0,20)}...</div>
+          <div class="s-label">Geohash</div><div class="s-val">${img.geohash}</div>
+          <a href="${imageUrl}" target="_blank">Open in IPFS ↗</a>
+        `;
 
-      resultsEl.appendChild(card);
-    });
+        resultsEl.appendChild(card);
+      });
 
-  } catch (error) {
-    console.error("Search error:", error);
-    statusEl.textContent = "❌ Search failed. Check backend.";
-    statusEl.style.color = "var(--danger)";
+      mapEl.style.display = "block";
+
+      if (!searchMap) {
+        searchMap = L.map('searchMap').setView([parseFloat(lat), parseFloat(lng)], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap'
+        }).addTo(searchMap);
+      } else {
+        searchMap.setView([parseFloat(lat), parseFloat(lng)], 13);
+      }
+
+      searchMap.eachLayer(layer => {
+        if (layer instanceof L.Marker) searchMap.removeLayer(layer);
+      });
+
+      L.marker([parseFloat(lat), parseFloat(lng)])
+        .addTo(searchMap)
+        .bindPopup(`<b>${placeName}</b><br>Images found: ${data.images.length}<br>Geohash: ${data.geohash}`)
+        .openPopup();
+
+    } catch (error) {
+      console.error(error);
+      statusEl.textContent = "❌ Search failed. Make sure backend is running!";
+      statusEl.style.color = "var(--danger)";
+    }
   }
-}
+
+  async function loadAnalytics() {
+    try {
+      const endpoint = currentUser && currentUser.role === "user"
+        ? "/user/analytics"
+        : "/analytics";
+
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        headers: authHeaders()
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Analytics failed");
+
+      document.getElementById('stat-total').textContent = data.totalImages || data.totalActivities || 0;
+      document.getElementById('stat-verified').textContent = data.authenticCount ?? data.totalImages ?? 0;
+      document.getElementById('stat-tampered').textContent = data.tamperedCount || 0;
+      document.getElementById('stat-locations').textContent = data.uniqueLocations || 0;
+
+      const chartEl = document.getElementById('type-chart');
+
+      if (data.typeCounts && Object.keys(data.typeCounts).length > 0) {
+        const maxVal = Math.max(...Object.values(data.typeCounts));
+        const colors = {
+          'Forest': '#00e676',
+          'Highway': '#00e5ff',
+          'Industrial': '#ffaa00',
+          'Residential': '#7b5cff',
+          'Agricultural': '#00c853',
+          'Farm': '#00c853',
+          'Water Body': '#00e5ff',
+          'Urban': '#7b5cff',
+          'Satellite Image': '#5a6585',
+          'Unverified': '#ff3d71'
+        };
+
+        chartEl.innerHTML = Object.entries(data.typeCounts).map(([type, count]) => `
+          <div class="chart-row">
+            <div class="chart-label">${type}</div>
+            <div class="chart-bar-bg">
+              <div class="chart-bar-fill" style="width:${(count / maxVal) * 100}%; background:${colors[type] || '#5a6585'}"></div>
+            </div>
+            <div class="chart-count">${count}</div>
+          </div>
+        `).join('');
+      } else {
+        chartEl.innerHTML = '<div class="empty">No analytics data yet.</div>';
+      }
+    } catch (err) {
+      console.error("Analytics error:", err);
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function loadHistory() {
+    const loadingEl = document.getElementById('history-loading');
+    const tableWrap = document.getElementById('history-table-wrap');
+    const tbody = document.getElementById('history-tbody');
+
+    loadingEl.style.display = 'block';
+    tableWrap.style.display = 'none';
+    tbody.innerHTML = '';
+
+    try {
+      const endpoint = currentUser && currentUser.role === "user"
+        ? "/user/history"
+        : "/history";
+
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        headers: authHeaders()
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "History failed");
+
+      const records = data.records || [];
+
+      if (records.length === 0) {
+        loadingEl.textContent = 'No records found yet.';
+        return;
+      }
+
+      loadingEl.style.display = 'none';
+      tableWrap.style.display = 'block';
+
+      const typeClass = {
+        'Forest': 'type-forest',
+        'Highway': 'type-highway',
+        'Industrial': 'type-industrial',
+        'Residential': 'type-residential',
+        'Agricultural': 'type-agricultural',
+        'Farm': 'type-agricultural'
+      };
+
+      tbody.innerHTML = records.map((r, i) => `
+        <tr>
+          <td style="color:var(--muted)">${i + 1}</td>
+          <td><span class="type-badge ${typeClass[r.imageType || r.image_type] || 'type-default'}">${r.imageType || r.image_type || r.action_type || 'Record'}</span></td>
+          <td style="color:var(--accent2)">${r.cid ? r.cid.substring(0, 20) + '...' : '—'}</td>
+          <td style="color:var(--accent)">${r.geohash || '—'}</td>
+          <td style="color:var(--muted)">${r.uploadedAt || r.uploaded_at || r.created_at || '—'}</td>
+          <td style="color:var(--muted)">${r.placeName || r.place_name || r.result || '—'}</td>
+          <td>${r.cid ? `<a href="https://gateway.pinata.cloud/ipfs/${r.cid}" target="_blank" style="color:var(--accent2);font-family:var(--mono);font-size:0.65rem;">View ↗</a>` : '—'}</td>
+        </tr>
+      `).join('');
+
+    } catch (err) {
+      console.error("History error:", err);
+      loadingEl.textContent = '❌ ' + err.message;
+    }
+  }
+
+  async function loadUsersDb() {
+    const el = document.getElementById("usersDbContent");
+
+    try {
+      const res = await fetch(`${API_BASE}/admin/users`, {
+        headers: authHeaders()
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load users");
+
+      if (!data.users || data.users.length === 0) {
+        el.innerHTML = '<div class="empty">No users found.</div>';
+        return;
+      }
+
+      el.innerHTML = data.users.map(u => `
+        <div class="meta-item" style="margin-bottom:10px;">
+          <div class="meta-label">Username</div>
+          <div class="meta-value">${u.username}</div>
+          <div class="meta-label">Role</div>
+          <div class="meta-value">${u.role}</div>
+          <div class="meta-label">Created At</div>
+          <div class="meta-value">${u.created_at}</div>
+        </div>
+      `).join("");
+    } catch (err) {
+      el.textContent = err.message;
+    }
+  }
+
+  async function loadImageDb() {
+    const el = document.getElementById("imageDbContent");
+
+    try {
+      const res = await fetch(`${API_BASE}/admin/history`, {
+        headers: authHeaders()
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load image database");
+
+      if (!data.records || data.records.length === 0) {
+        el.innerHTML = '<div class="empty">No images stored in database.</div>';
+        return;
+      }
+
+      el.innerHTML = data.records.map(r => `
+        <div class="meta-item" style="margin-bottom:14px;">
+          <div class="meta-label">${r.imageType}</div>
+          <div class="meta-value">${r.filename}</div>
+          <div class="meta-label">Place</div>
+          <div class="meta-value">${r.placeName || 'Unknown'}</div>
+          <div class="meta-label">CID</div>
+          <div class="meta-value">${r.cid}</div>
+          <div class="meta-label">Hash</div>
+          <div class="meta-value">${r.hash}</div>
+          <div class="meta-label">TX Hash</div>
+          <div class="meta-value">${r.txHash}</div>
+        </div>
+      `).join("");
+    } catch (err) {
+      el.textContent = err.message;
+    }
+  }
+
+  if (currentUser && authToken) {
+    applyRoleDashboard();
+  }
 </script>
 </body>
 </html>

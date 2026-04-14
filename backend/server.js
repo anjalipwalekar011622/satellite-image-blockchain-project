@@ -4,6 +4,8 @@ const { generateHash } = require("./services/hashService");
 const { generateGeohash } = require("./services/geohashService");
 const uploadRoute = require("./routes/uploadRoute");
 const verifyRoute = require("./routes/verifyRoute");
+const authRoute = require("./routes/authRoute");
+
 
 const app = express();
 
@@ -12,6 +14,8 @@ app.use(express.json());
 
 app.use("/api", uploadRoute);
 app.use("/api", verifyRoute);
+app.use("/api/auth", authRoute);
+
 
 // Test route
 app.get("/", (req, res) => {
