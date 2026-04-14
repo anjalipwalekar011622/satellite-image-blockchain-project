@@ -1,0 +1,10 @@
+{
+  "liveServer.settings.ignoreFiles": [
+    "**/node_modules/**",
+    "**/backend/satverify.db",
+    "**/backend/satverify.db-*",
+    "**/*.db",
+    "**/*.db-wal",
+    "**/*.db-shm"
+  ]
+}

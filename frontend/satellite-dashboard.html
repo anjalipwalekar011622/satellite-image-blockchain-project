@@ -251,7 +251,7 @@
         <label>Password</label>
         <input id="loginPassword" type="password" placeholder="Enter password" />
       </div>
-      <button class="btn btn-primary" onclick="loginUser()">Login</button>
+      <button type="button" class="btn btn-primary" onclick="loginUser()">Login</button>
     </div>
 
     <div class="card">
@@ -264,8 +264,8 @@
         <label>Password</label>
         <input id="registerPassword" type="password" placeholder="Minimum 6 characters" />
       </div>
-      <button class="btn btn-outline" onclick="registerUser()">Register User</button>
-      <button class="btn btn-primary" onclick="setupAdmin()">Create First Admin</button>
+      <button type="button" class="btn btn-outline" onclick="registerUser()">Register User</button>
+      <button type="button" class="btn btn-primary" onclick="setupAdmin()">Create First Admin</button>
       <div class="api-url">Admin setup works only once.</div>
     </div>
   </div>
@@ -280,7 +280,7 @@
       <div class="admin-desc">Only verified admins can upload satellite images to the blockchain registry.</div>
       <div class="admin-row">
         <input type="password" id="adminPasswordInput" class="admin-input" placeholder="Enter admin password" onkeydown="if(event.key==='Enter') adminLogin()"/>
-        <button class="btn-admin" onclick="adminLogin()">Login</button>
+        <button type="button" class="btn-admin" onclick="adminLogin()">Login</button>
       </div>
       <div class="admin-err" id="adminLoginMsg"></div>
     </div>
@@ -378,7 +378,7 @@
           </div>
           <!-- Detailed Report -->
           <div class="report-box" id="verify-report"></div>
-          <button class="btn btn-outline" style="margin-top:12px" onclick="downloadReport()">⬇ Download Report</button>
+          <button type="button" class="btn btn-outline" style="margin-top:12px" onclick="downloadReport()">⬇ Download Report</button>
         </div>
       </div>
     </div>
@@ -462,7 +462,7 @@
           <div class="r-row"><span class="r-key">Network</span><span class="r-val">http://127.0.0.1:7545</span></div>
           <div class="r-row"><span class="r-key">Backend</span><span class="r-val">Node.js + Express (Port 5000)</span></div>
         </div>
-        <button class="btn btn-primary" onclick="loadAnalytics()" style="margin-top: 16px;">🔄 Refresh Analytics</button>
+        <button type="button" class="btn btn-primary" onclick="loadAnalytics()" style="margin-top: 16px;">🔄 Refresh Analytics</button>
       </div>
     </div>
   </div>
@@ -495,7 +495,7 @@
           <tbody id="history-tbody"></tbody>
         </table>
       </div>
-      <button class="btn btn-primary" onclick="loadHistory()" style="margin-top: 20px;">🔄 Refresh Records</button>
+      <button type="button" class="btn btn-primary" onclick="loadHistory()" style="margin-top: 20px;">🔄 Refresh Records</button>
     </div>
   </div>
 <div id="panel-users" class="panel">
