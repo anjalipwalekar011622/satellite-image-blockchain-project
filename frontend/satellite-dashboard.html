@@ -234,12 +234,42 @@
 
 <main>
 
-  <div id="panel-auth" class="panel active">
+ <div id="panel-auth" class="panel active">
   <div class="section-header">
     <div class="section-tag">// SECURE ACCESS</div>
     <div class="section-title">SatVerify Login</div>
     <div class="section-desc">Admins and users login with database-stored hashed passwords. First admin can be created once.</div>
   </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span>▸</span> Login</div>
+      <div class="field">
+        <label>Username</label>
+        <input id="loginUsername" placeholder="Enter username" />
+      </div>
+      <div class="field" style="margin-top:16px;">
+        <label>Password</label>
+        <input id="loginPassword" type="password" placeholder="Enter password" />
+      </div>
+      <button class="btn btn-primary" onclick="loginUser()">Login</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>▸</span> Register / Admin Setup</div>
+      <div class="field">
+        <label>Username</label>
+        <input id="registerUsername" placeholder="Create username" />
+      </div>
+      <div class="field" style="margin-top:16px;">
+        <label>Password</label>
+        <input id="registerPassword" type="password" placeholder="Minimum 6 characters" />
+      </div>
+      <button class="btn btn-outline" onclick="registerUser()">Register User</button>
+      <button class="btn btn-primary" onclick="setupAdmin()">Create First Admin</button>
+      <div class="api-url">Admin setup works only once.</div>
+    </div>
+  </div>
+ </div>
 
   <!-- ══════════════════════════════════
        PANEL 01 — UPLOAD
@@ -298,7 +328,7 @@
             </div>
           </div>
 
-          <button class="btn btn-primary" id="upload-btn" onclick="doUpload()" disabled>Upload to Blockchain</button>
+          <button type="button" class="btn btn-primary" id="upload-btn" onclick="doUpload()" disabled>Upload to Blockchain</button>
           <div class="api-url"><span class="method-badge method-post">POST</span>/uploadImage · multipart/form-data</div>
         </div>
         <div class="card">
@@ -332,7 +362,7 @@
           <div class="drop-text"><strong>Click to browse or drag & drop</strong>Image to authenticate</div>
         </div>
         <div class="img-preview-wrap" id="verify-preview"><div class="img-placeholder">Image preview will appear here</div></div>
-        <button class="btn btn-primary" id="verify-btn" onclick="doVerify()" disabled>Verify on Blockchain</button>
+        <button type="button" class="btn btn-primary" id="verify-btn" onclick="doVerify()" disabled>Verify on Blockchain</button>
         <div class="api-url"><span class="method-badge method-post">POST</span>/verifyImage · multipart/form-data</div>
       </div>
       <div class="card">
@@ -369,7 +399,7 @@
         <div class="field"><label>Latitude</label><input type="number" id="latInput" placeholder="e.g. 19.0760" step="any"/></div>
         <div class="field"><label>Longitude</label><input type="number" id="lngInput" placeholder="e.g. 72.8777" step="any"/></div>
       </div>
-      <button class="btn btn-primary" onclick="searchByLocation()">🔍 Search Blockchain</button>
+      <button type="button" class="btn btn-primary" onclick="searchByLocation()">🔍 Search Blockchain</button>
       <div class="api-url"><span class="method-badge method-get">GET</span>/search?lat={lat}&lng={lng}</div>
     </div>
     <div id="searchStatus" style="display:none;" class="search-status"></div>
@@ -494,45 +524,13 @@
 
 </main>
 
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title"><span>▸</span> Login</div>
-      <div class="field">
-        <label>Username</label>
-        <input id="loginUsername" placeholder="Enter username" />
-      </div>
-      <div class="field" style="margin-top:16px;">
-        <label>Password</label>
-        <input id="loginPassword" type="password" placeholder="Enter password" />
-      </div>
-      <button class="btn btn-primary" onclick="loginUser()">Login</button>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><span>▸</span> Register / Admin Setup</div>
-      <div class="field">
-        <label>Username</label>
-        <input id="registerUsername" placeholder="Create username" />
-      </div>
-      <div class="field" style="margin-top:16px;">
-        <label>Password</label>
-        <input id="registerPassword" type="password" placeholder="Minimum 6 characters" />
-      </div>
-      <button class="btn btn-outline" onclick="registerUser()">Register User</button>
-      <button class="btn btn-primary" onclick="setupAdmin()">Create First Admin</button>
-      <div class="api-url">Admin setup works only once.</div>
-    </div>
-  </div>
-</div>
-
-
 <div class="toast hidden" id="toast">
   <span id="toast-icon"></span>
   <span id="toast-msg"></span>
 </div>
 
 <script>
-  const API_BASE = 'https://reimagined-carnival-jjppwjj7prv525wx6-5000.app.github.dev/';
+  const API_BASE = 'https://reimagined-carnival-jjppwjj7prv525wx6-5000.app.github.dev/api';
 
   let authToken = localStorage.getItem("satverify_token") || "";
   let currentUser = JSON.parse(localStorage.getItem("satverify_user") || "null");
